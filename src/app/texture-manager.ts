@@ -42,15 +42,21 @@ export class TextureManager {
    * Registers dropped/selected files, keeping only supported image types.
    *
    * @param fileList - Files from a drop event or file input.
+   * @returns The object URLs of the files that were newly added, in order.
    */
-  addFiles(fileList: FileList | File[]): void {
+  addFiles(fileList: FileList | File[]): string[] {
     const arr = Array.from(fileList);
+    const added: string[] = [];
 
     for (const f of arr) {
       if (/\.(jpe?g|png|bmp|tga|gif|webp)$/i.test(f.name)) {
-        this.files.push(URL.createObjectURL(f));
+        const url = URL.createObjectURL(f);
+        this.files.push(url);
+        added.push(url);
       }
     }
+
+    return added;
   }
 
   /**
@@ -70,35 +76,45 @@ export class TextureManager {
   /**
    * Picks a random registered image URL.
    *
+   * @param exclude - A URL to avoid returning (e.g. the image already on screen)
+   *   so consecutive picks differ. Ignored if it is the only registered image.
    * @returns A URL, or `null` if no images are registered.
    */
-  getRandomUrl(): string | null {
+  getRandomUrl(exclude?: string): string | null {
     if (this.files.length === 0) return null;
-    return this.files[Math.floor(Math.random() * this.files.length)];
+
+    let pool = this.files;
+
+    if (exclude !== undefined && this.files.length > 1) {
+      const filtered = this.files.filter((u) => u !== exclude);
+      if (filtered.length > 0) pool = filtered;
+    }
+
+    return pool[Math.floor(Math.random() * pool.length)]!;
   }
 
   /**
-   * Loads an image and decodes it into the given pixel slot.
+   * Loads an image and decodes it to RGBA pixels, *without* storing it in a slot.
+   *
+   * @remarks
+   * Decoding is kept separate from slot assignment so callers can discard a
+   * stale result (e.g. one superseded by a fresh drop) before it clobbers a slot.
    *
    * @param url - Image URL to load.
-   * @param slot - Destination slot index.
    * @param resize - If `true`, scale to fill; otherwise centre-crop when large enough.
-   * @returns The image's display name (final path segment).
+   * @returns The decoded pixels and the image's display name (final path segment).
    * @throws If the image fails to load.
    */
-  async loadIntoSlot(
+  async decode(
     url: string,
-    slot: number,
     resize: boolean,
-  ): Promise<string> {
+  ): Promise<{ pixels: Uint8ClampedArray; name: string }> {
     const img = await loadImage(url);
-    const buf = resampleTo256(img, resize);
-
-    this.pixels[slot] = buf;
+    const pixels = resampleTo256(img, resize);
 
     const parts = url.split("/");
 
-    return parts[parts.length - 1] ?? url;
+    return { pixels, name: parts[parts.length - 1] ?? url };
   }
 
   /**

@@ -9,8 +9,8 @@ function makeFakes() {
   const tex = {
     pixels: [buf, buf, null, null],
     getRandomUrl: vi.fn(() => "img.png"),
-    loadIntoSlot: vi.fn(async () => "img.png"),
-    addFiles: vi.fn(),
+    decode: vi.fn(async (url: string) => ({ pixels: buf, name: url })),
+    addFiles: vi.fn(() => ["dropped.png"]),
     swap: vi.fn(),
   };
   const renderer = { uploadTexture: vi.fn() };
@@ -35,12 +35,12 @@ describe("CrossfadeController", () => {
   it("does not fade before the interval elapses", () => {
     f.controller.tick(0.5);
     expect(f.controller.fade).toBe(0);
-    expect(f.tex.loadIntoSlot).not.toHaveBeenCalled();
+    expect(f.tex.decode).not.toHaveBeenCalled();
   });
 
   it("begins loading the next texture once the interval is reached", () => {
     f.controller.tick(1.0);
-    expect(f.tex.loadIntoSlot).toHaveBeenCalledWith("img.png", 1, true);
+    expect(f.tex.decode).toHaveBeenCalledWith("img.png", true);
   });
 
   it("ramps the fade between 0 and 1 mid-crossfade", () => {
@@ -62,14 +62,16 @@ describe("CrossfadeController", () => {
   it("trigger() forces the next tick to start a crossfade", () => {
     f.controller.trigger();
     f.controller.tick(0.001);
-    expect(f.tex.loadIntoSlot).toHaveBeenCalled();
+    expect(f.tex.decode).toHaveBeenCalled();
   });
 
-  it("dropFiles() registers files and loads the first into slot 0", async () => {
+  it("dropFiles() registers files and loads the first dropped one into slot 0", async () => {
     const files = [new File([], "x.png")];
     await f.controller.dropFiles(files);
     expect(f.tex.addFiles).toHaveBeenCalledWith(files);
-    expect(f.tex.loadIntoSlot).toHaveBeenCalledWith("img.png", 0, true);
+    // Loads the just-dropped file, not a random one from the pool.
+    expect(f.tex.decode).toHaveBeenCalledWith("dropped.png", true);
+    expect(f.tex.getRandomUrl).not.toHaveBeenCalled();
     expect(f.controller.fade).toBe(0);
   });
 });

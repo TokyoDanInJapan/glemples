@@ -39,6 +39,7 @@ import {
 } from "./engine/warp.js";
 import { CrossfadeController } from "./app/crossfade.js";
 import { bindUI } from "./app/ui.js";
+import defaultTextureUrl from "./assets/texture.png";
 import {
   UV_CELLS_X,
   UV_CELLS_Y,
@@ -90,6 +91,10 @@ const crossfade = new CrossfadeController(
 );
 
 bindUI({ params, motionBlur, paused, crossfade, pauseBtn });
+
+// Show the bundled default texture once it decodes; the procedural texture
+// above stays on screen as the instant placeholder until then.
+crossfade.showUrl(defaultTextureUrl);
 
 let animTime = 0;
 let lastTime = performance.now();

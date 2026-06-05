@@ -37,6 +37,17 @@ export class CrossfadeController {
 
   /** Seconds elapsed since the current hold began. */
   private timer = 0;
+  /**
+   * Bumped whenever a drop restarts playback. Async loads capture the epoch when
+   * they start and discard their result if it no longer matches, so an in-flight
+   * load from the tick loop can never clobber a freshly dropped image.
+   */
+  private loadEpoch = 0;
+  /**
+   * URL currently loaded into slots 0 and 1. Used to pick a *different* image
+   * for the next crossfade so "next texture" never fades an image into itself.
+   */
+  private slotUrl: (string | null)[] = [null, null];
   private tex: TextureManager;
   private renderer: Renderer;
   private texLabel: HTMLElement;
@@ -78,6 +89,7 @@ export class CrossfadeController {
 
       if (this.fade >= 1.0) {
         this.tex.swap(0, 1);
+        this.slotUrl[0] = this.slotUrl[1];
         this.renderer.uploadTexture(0, this.tex.pixels[0]!);
         this.fade = 0;
         this.timer = 0;
@@ -87,9 +99,15 @@ export class CrossfadeController {
     }
   }
 
-  /** Forces the next crossfade to begin on the following {@link tick}. */
+  /**
+   * Forces the next crossfade to begin on the following {@link tick}.
+   *
+   * @remarks
+   * No-op while a crossfade is already running, so a click mid-fade can't reset
+   * the in-progress fade back to the start.
+   */
   trigger(): void {
-    this.timer = this.interval;
+    if (this.fade === 0) this.timer = this.interval;
   }
 
   /**
@@ -98,12 +116,35 @@ export class CrossfadeController {
    * @param fileList - Files from a drop event.
    */
   async dropFiles(fileList: FileList | File[]): Promise<void> {
-    this.tex.addFiles(fileList);
+    const added = this.tex.addFiles(fileList);
 
-    await this.loadAndUpload(0);
-
+    // Cancel any load the tick loop has in flight, then restart the hold before
+    // awaiting so a mid-fade swap can't race with the dropped image.
+    this.loadEpoch++;
     this.timer = 0;
     this.fade = 0;
+
+    // Show the first file the user just dropped, not a random one from the pool.
+    await this.loadAndUpload(0, added[0]);
+  }
+
+  /**
+   * Registers a single image URL and shows it immediately in slot 0.
+   *
+   * @remarks
+   * Used to seed the bundled default texture at startup; the URL also joins the
+   * pool so it participates in the ongoing crossfade rotation.
+   *
+   * @param url - Image URL to register and display.
+   */
+  async showUrl(url: string): Promise<void> {
+    this.tex.addUrls([url]);
+
+    this.loadEpoch++;
+    this.timer = 0;
+    this.fade = 0;
+
+    await this.loadAndUpload(0, url);
   }
 
   /**
@@ -111,16 +152,23 @@ export class CrossfadeController {
    * swallowed so a bad image never interrupts playback.
    *
    * @param slot - Destination slot (0 or 1).
+   * @param url - Specific image to load; defaults to a random registered one.
    */
-  private async loadAndUpload(slot: 0 | 1): Promise<void> {
-    const url = this.tex.getRandomUrl();
+  private async loadAndUpload(slot: 0 | 1, url?: string): Promise<void> {
+    url ??= this.tex.getRandomUrl(this.slotUrl[0] ?? undefined) ?? undefined;
 
     if (!url) return;
 
-    try {
-      const name = await this.tex.loadIntoSlot(url, slot, true);
+    const epoch = this.loadEpoch;
 
-      this.renderer.uploadTexture(slot, this.tex.pixels[slot]!);
+    try {
+      const { pixels, name } = await this.tex.decode(url, true);
+
+      if (epoch !== this.loadEpoch) return; // superseded by a drop
+
+      this.tex.pixels[slot] = pixels;
+      this.slotUrl[slot] = url;
+      this.renderer.uploadTexture(slot, pixels);
 
       if (slot === 0) this.texLabel.textContent = name;
     } catch {
@@ -133,12 +181,18 @@ export class CrossfadeController {
    * is ready to display after the upcoming swap.
    */
   private async preloadCpuSlot0(): Promise<void> {
-    const url = this.tex.getRandomUrl();
+    const url = this.tex.getRandomUrl(this.slotUrl[0] ?? undefined);
 
     if (!url) return;
 
+    const epoch = this.loadEpoch;
+
     try {
-      const name = await this.tex.loadIntoSlot(url, 0, true);
+      const { pixels, name } = await this.tex.decode(url, true);
+
+      if (epoch !== this.loadEpoch) return; // superseded by a drop
+
+      this.tex.pixels[0] = pixels;
       this.texLabel.textContent = name;
     } catch {
       // Silently skip unreadable images.

@@ -30,6 +30,19 @@ describe("TextureManager registry", () => {
     for (let n = 0; n < 20; n++)
       expect(["a.png", "b.jpg", "c.webp"]).toContain(tm.getRandomUrl());
   });
+
+  it("never returns the excluded URL when alternatives exist", () => {
+    const tm = new TextureManager();
+    tm.addUrls(["a.png", "b.jpg", "c.webp"]);
+    for (let n = 0; n < 50; n++)
+      expect(tm.getRandomUrl("a.png")).not.toBe("a.png");
+  });
+
+  it("ignores the exclusion when it is the only registered image", () => {
+    const tm = new TextureManager();
+    tm.addUrls(["a.png"]);
+    expect(tm.getRandomUrl("a.png")).toBe("a.png");
+  });
 });
 
 describe("TextureManager.swap", () => {
