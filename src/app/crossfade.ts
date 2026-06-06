@@ -129,22 +129,22 @@ export class CrossfadeController {
   }
 
   /**
-   * Registers a single image URL and shows it immediately in slot 0.
+   * Registers one or more image URLs and shows the first immediately in slot 0.
    *
    * @remarks
-   * Used to seed the bundled default texture at startup; the URL also joins the
-   * pool so it participates in the ongoing crossfade rotation.
+   * Used to seed the bundled default textures at startup; every URL also joins
+   * the pool so it participates in the ongoing crossfade rotation.
    *
-   * @param url - Image URL to register and display.
+   * @param urls - Image URLs to register; the first is displayed.
    */
-  async showUrl(url: string): Promise<void> {
-    this.tex.addUrls([url]);
+  async showUrls(urls: string[]): Promise<void> {
+    this.tex.addUrls(urls);
 
     this.loadEpoch++;
     this.timer = 0;
     this.fade = 0;
 
-    await this.loadAndUpload(0, url);
+    await this.loadAndUpload(0, urls[0]);
   }
 
   /**

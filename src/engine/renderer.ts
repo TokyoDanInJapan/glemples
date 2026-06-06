@@ -18,7 +18,9 @@ import warpVertSrc from "./shaders/warp.vert?raw";
 import warpFragSrc from "./shaders/warp.frag?raw";
 import blitVertSrc from "./shaders/blit.vert?raw";
 import blitFragSrc from "./shaders/blit.frag?raw";
+
 import { UV_CELLS_X, UV_CELLS_Y, TEXTURE_SIZE } from "../app/config.js";
+
 import {
   createProgram,
   makeTexture,

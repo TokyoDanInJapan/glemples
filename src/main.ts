@@ -27,19 +27,25 @@
  */
 
 import { Renderer } from "./engine/renderer.js";
+
 import {
   TextureManager,
   makeProceduralTexture,
 } from "./app/texture-manager.js";
+
 import {
   computeWarpGrid,
   randomizeState,
   WarpParams,
   WarpState,
 } from "./engine/warp.js";
+
 import { CrossfadeController } from "./app/crossfade.js";
 import { bindUI } from "./app/ui.js";
-import defaultTextureUrl from "./assets/texture.png";
+
+import tex01Url from "./assets/tex01.png";
+import tex02Url from "./assets/tex02.png";
+
 import {
   UV_CELLS_X,
   UV_CELLS_Y,
@@ -92,9 +98,9 @@ const crossfade = new CrossfadeController(
 
 bindUI({ params, motionBlur, paused, crossfade, pauseBtn });
 
-// Show the bundled default texture once it decodes; the procedural texture
-// above stays on screen as the instant placeholder until then.
-crossfade.showUrl(defaultTextureUrl);
+// Register the bundled textures and show the first once it decodes; the
+// procedural texture above stays on screen as the instant placeholder until then.
+crossfade.showUrls([tex01Url, tex02Url]);
 
 let animTime = 0;
 let lastTime = performance.now();
