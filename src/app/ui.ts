@@ -24,6 +24,13 @@
 import type { WarpParams } from "../engine/warp.js";
 import type { CrossfadeController } from "./crossfade.js";
 
+/** Smallest permitted {@link WarpParams.masterZoom}. */
+const MIN_ZOOM = 0.01;
+/** Largest permitted {@link WarpParams.masterZoom}. */
+const MAX_ZOOM = 3;
+/** Multiplicative zoom step per `+`/`-` keypress or wheel notch. */
+const ZOOM_STEP = 1.1;
+
 /**
  * Mutable state the UI reads from and writes to.
  *
@@ -102,26 +109,21 @@ export function bindUI(ui: UIBindings): void {
         break;
       case "+":
       case "=":
-        params.masterZoom = Math.min(3, params.masterZoom * 1.1);
-        syncSlider("zoom", params.masterZoom * 100);
+        applyZoom(params, ZOOM_STEP);
         break;
       case "-":
-        params.masterZoom = Math.max(0.01, params.masterZoom / 1.1);
-        syncSlider("zoom", params.masterZoom * 100);
+        applyZoom(params, 1 / ZOOM_STEP);
         break;
     }
   });
 
+  // Scroll up to zoom in, down to zoom out. `passive: false` lets us
+  // `preventDefault` so the gesture zooms the warp instead of scrolling the page.
   document.addEventListener(
     "wheel",
     (e: WheelEvent) => {
       e.preventDefault();
-      const factor = e.deltaY < 0 ? 1.1 : 1 / 1.1;
-      params.masterZoom = Math.min(
-        3,
-        Math.max(0.01, params.masterZoom * factor),
-      );
-      syncSlider("zoom", params.masterZoom * 100);
+      applyZoom(params, e.deltaY < 0 ? ZOOM_STEP : 1 / ZOOM_STEP);
     },
     { passive: false },
   );
@@ -140,6 +142,21 @@ export function bindUI(ui: UIBindings): void {
     document.body.classList.remove("dragging");
     if (e.dataTransfer?.files.length) crossfade.dropFiles(e.dataTransfer.files);
   });
+}
+
+/**
+ * Scales the master zoom by `factor` (clamped to `[MIN_ZOOM, MAX_ZOOM]`) and
+ * syncs the zoom slider to match. Used by the `+`/`-` keys and the scroll wheel.
+ *
+ * @param params - Live warp params whose `masterZoom` is updated in place.
+ * @param factor - Multiplier to apply (> 1 zooms in, < 1 zooms out).
+ */
+function applyZoom(params: WarpParams, factor: number): void {
+  params.masterZoom = Math.min(
+    MAX_ZOOM,
+    Math.max(MIN_ZOOM, params.masterZoom * factor),
+  );
+  syncSlider("zoom", params.masterZoom * 100);
 }
 
 /**
