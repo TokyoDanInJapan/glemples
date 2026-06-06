@@ -112,6 +112,20 @@ export function bindUI(ui: UIBindings): void {
     }
   });
 
+  document.addEventListener(
+    "wheel",
+    (e: WheelEvent) => {
+      e.preventDefault();
+      const factor = e.deltaY < 0 ? 1.1 : 1 / 1.1;
+      params.masterZoom = Math.min(
+        3,
+        Math.max(0.01, params.masterZoom * factor),
+      );
+      syncSlider("zoom", params.masterZoom * 100);
+    },
+    { passive: false },
+  );
+
   document.addEventListener("dragover", (e: DragEvent) => {
     e.preventDefault();
     document.body.classList.add("dragging");

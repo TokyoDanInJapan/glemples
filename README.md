@@ -32,6 +32,7 @@ computeWarpGrid (CPU)  ──►  warp grid texture  ──►  warp pass (GPU) 
 | Zoom          | Overall zoom in/out                          |
 | Speed         | Animation speed                              |
 | Tex interval  | Seconds between automatic texture crossfades |
+| Scroll wheel  | Zoom in / out                                |
 | Drag-and-drop | Drop image files to load and warp them       |
 
 ### Keyboard shortcuts
