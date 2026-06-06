@@ -23,13 +23,7 @@
 
 import type { WarpParams } from "../engine/warp.js";
 import type { CrossfadeController } from "./crossfade.js";
-
-/** Smallest permitted {@link WarpParams.masterZoom}. */
-const MIN_ZOOM = 0.01;
-/** Largest permitted {@link WarpParams.masterZoom}. */
-const MAX_ZOOM = 3;
-/** Multiplicative zoom step per `+`/`-` keypress or wheel notch. */
-const ZOOM_STEP = 1.1;
+import { ZOOM_MIN, ZOOM_MAX, ZOOM_STEP } from "./config.js";
 
 /**
  * Mutable state the UI reads from and writes to.
@@ -145,7 +139,7 @@ export function bindUI(ui: UIBindings): void {
 }
 
 /**
- * Scales the master zoom by `factor` (clamped to `[MIN_ZOOM, MAX_ZOOM]`) and
+ * Scales the master zoom by `factor` (clamped to `[ZOOM_MIN, ZOOM_MAX]`) and
  * syncs the zoom slider to match. Used by the `+`/`-` keys and the scroll wheel.
  *
  * @param params - Live warp params whose `masterZoom` is updated in place.
@@ -153,8 +147,8 @@ export function bindUI(ui: UIBindings): void {
  */
 function applyZoom(params: WarpParams, factor: number): void {
   params.masterZoom = Math.min(
-    MAX_ZOOM,
-    Math.max(MIN_ZOOM, params.masterZoom * factor),
+    ZOOM_MAX,
+    Math.max(ZOOM_MIN, params.masterZoom * factor),
   );
   syncSlider("zoom", params.masterZoom * 100);
 }

@@ -38,6 +38,9 @@ interface Config {
   master_zoom: number;
   texture_scale: number;
   speed_scale: number;
+  zoom_min: number;
+  zoom_max: number;
+  zoom_step: number;
   fade_interval: number;
   fade_duration: number;
   initial_motion_blur: number;
@@ -63,6 +66,13 @@ export const DEFAULT_WARP_PARAMS = {
   texScale: cfg.texture_scale,
   speedScale: cfg.speed_scale,
 };
+
+/** Smallest permitted master zoom (see {@link WarpParams.masterZoom}). */
+export const ZOOM_MIN = cfg.zoom_min;
+/** Largest permitted master zoom. */
+export const ZOOM_MAX = cfg.zoom_max;
+/** Multiplicative zoom step per `+`/`-` keypress or wheel notch. */
+export const ZOOM_STEP = cfg.zoom_step;
 
 /** Seconds a texture is held before the next crossfade begins. */
 export const FADE_INTERVAL = cfg.fade_interval;
