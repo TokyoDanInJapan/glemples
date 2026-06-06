@@ -82,7 +82,14 @@ renderer.uploadTexture(1, fallback);
 
 const params: WarpParams = { ...DEFAULT_WARP_PARAMS };
 let warpState: WarpState = randomizeState();
+// The state the warp is morphing *towards* during a crossfade, or null when no
+// crossfade is in progress. Chosen when the fade starts and promoted to
+// `warpState` when it finishes, so the warp field is never replaced in a single
+// frame (which read as a sudden jump).
+let warpStateNext: WarpState | null = null;
 const gridBuf: Float32Array = new Float32Array(UV_CELLS_X * UV_CELLS_Y * 2);
+// Scratch grid for the incoming warp state, blended into `gridBuf` by the fade.
+const gridBufNext: Float32Array = new Float32Array(UV_CELLS_X * UV_CELLS_Y * 2);
 const motionBlur: { value: number } = { value: INITIAL_MOTION_BLUR };
 const paused: { value: boolean } = { value: false };
 
@@ -92,7 +99,11 @@ const crossfade = new CrossfadeController(
   texEl,
   FADE_INTERVAL,
   () => {
-    warpState = randomizeState();
+    // Fade complete: the morph has fully reached the incoming state, so adopt it.
+    if (warpStateNext) {
+      warpState = warpStateNext;
+      warpStateNext = null;
+    }
   },
 );
 
@@ -103,6 +114,11 @@ bindUI({ params, motionBlur, paused, crossfade, pauseBtn });
 crossfade.showUrls([tex01Url, tex02Url]);
 
 let animTime = 0;
+// Accumulated base-rotation angle. Integrated each frame from the current
+// state's rotationalSpeed so re-randomising warpState changes only the rate,
+// never the absolute angle — otherwise the field would snap (a visible judder)
+// every time a crossfade completes.
+let warpRotation = 0;
 let lastTime = performance.now();
 let frameCount = 0;
 let fpsTime = 0;
@@ -115,13 +131,30 @@ function frame(now: number): void {
 
   if (!paused.value) {
     const speedMult = 0.75 * Math.pow(8.0, 1.0 - params.speedScale * 0.1);
+    const dAnim = dt * speedMult;
 
-    animTime += dt * speedMult;
+    animTime += dAnim;
+    // Advance the angle with the current rate *before* tick() may re-roll the
+    // state, so this frame uses the rate the previous frame ended on.
+    warpRotation += dAnim * warpState.rotationalSpeed * Math.PI * 2;
 
     crossfade.tick(dt);
   }
 
-  computeWarpGrid(animTime, params, warpState, gridBuf);
+  // A crossfade is starting (or running): pick the warp state to morph towards
+  // so the field eases from old to new over the fade instead of snapping at the
+  // end. The texture crossfade masks the morph.
+  if (crossfade.fade > 0 && !warpStateNext) warpStateNext = randomizeState();
+
+  computeWarpGrid(animTime, params, warpState, warpRotation, gridBuf);
+
+  if (warpStateNext) {
+    computeWarpGrid(animTime, params, warpStateNext, warpRotation, gridBufNext);
+    const f = crossfade.fade;
+    for (let i = 0; i < gridBuf.length; i++)
+      gridBuf[i] += (gridBufNext[i] - gridBuf[i]) * f;
+  }
+
   renderer.render(gridBuf, motionBlur.value, crossfade.fade);
 
   frameCount++;

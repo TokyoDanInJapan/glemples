@@ -406,19 +406,23 @@ function modeTunnel(
  * @param animTime - Current animation time.
  * @param params - Live warp parameters.
  * @param state - Current warp state (random seeds, oscillators).
+ * @param rotation - Accumulated base-rotation angle, in radians. Supplied by the
+ *   caller and integrated continuously so a re-rolled {@link WarpState} changes
+ *   only the rotation *rate*, never the absolute angle (which would snap).
  * @returns The fully populated {@link FrameContext}.
  */
 function buildFrameContext(
   animTime: number,
   params: WarpParams,
   state: WarpState,
+  rotation: number,
 ): FrameContext {
   const { warpFactor } = params;
-  const { randStart: rs, oscillators: osc, rotationalSpeed } = state;
+  const { randStart: rs, oscillators: osc } = state;
 
   const intframe2 = animTime * 22.5;
   const scale = 0.45 + 0.1 * Math.sin(intframe2 * 0.01);
-  const rot = animTime * rotationalSpeed * Math.PI * 2;
+  const rot = rotation;
 
   const fscale1 =
     1.0 +
@@ -501,15 +505,19 @@ function buildFrameContext(
  * @param animTime - Current animation time.
  * @param params - Live warp parameters.
  * @param state - Current warp state.
+ * @param rotation - Accumulated base-rotation angle, in radians (see
+ *   {@link buildFrameContext}). The caller integrates `rotationalSpeed` over time
+ *   and passes the running total here so rotation stays continuous across re-rolls.
  * @param gridOut - Pre-allocated output buffer, mutated in place.
  */
 export function computeWarpGrid(
   animTime: number,
   params: WarpParams,
   state: WarpState,
+  rotation: number,
   gridOut: Float32Array,
 ): void {
-  const ctx = buildFrameContext(animTime, params, state);
+  const ctx = buildFrameContext(animTime, params, state, rotation);
   const t = computeModeWeights(animTime, state, params.modeFocusExponent);
   const zoom =
     (1.0 / (params.masterZoom * 1.8)) *
