@@ -1,0 +1,25 @@
+# Warp grid resolution: UV sample points computed by the CPU each frame.
+uv_cells_x: 36
+uv_cells_y: 28
+
+# Image texture resolution (must be power-of-two for REPEAT wrap in WebGL1).
+texture_size: 1024
+
+# Default warp parameters.
+warp_factor: 0.22
+mode_focus_exponent: 2.9
+master_zoom: 1.0
+texture_scale: 10
+speed_scale: 10
+
+# Zoom bounds and the multiplicative step per +/- keypress or wheel notch.
+zoom_min: 0.01
+zoom_max: 3
+zoom_step: 1.1
+
+# Texture crossfade timing (seconds).
+fade_interval: 20
+fade_duration: 5
+
+# Initial motion blur (0 = none, ~0.97 = heavy).
+initial_motion_blur: 0.88

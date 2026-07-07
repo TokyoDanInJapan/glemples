@@ -1,0 +1,36 @@
+{
+  "name": "glemples",
+  "version": "1.0.0",
+  "type": "module",
+  "license": "GPL-3.0-or-later",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "coverage": "vitest run --coverage",
+    "release": "npm run build && mkdir -p releases && rm -f releases/glemples-$npm_package_version.zip && cd dist && zip -rq ../releases/glemples-$npm_package_version.zip .",
+    "prepare": "husky"
+  },
+  "overrides": {
+    "js-yaml": "^4.1.1"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@modyfi/vite-plugin-yaml": "^1.1.1",
+    "@vitest/coverage-v8": "^4.1.8",
+    "eslint": "^10.4.1",
+    "eslint-config-prettier": "^10.1.8",
+    "globals": "^17.6.0",
+    "husky": "^9.1.7",
+    "prettier": "^3.8.3",
+    "typescript": "^5.4.0",
+    "typescript-eslint": "^8.60.1",
+    "vite": "^8.0.16",
+    "vitest": "^4.1.8"
+  }
+}
