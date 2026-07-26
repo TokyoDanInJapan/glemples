@@ -1,18 +1,7 @@
 // GLemples — real-time WebGL image warper
 // Copyright (C) 2026 Daniel Hebberd
 //
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-//
-// You should have received a copy of the GNU General Public License
-// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
  * Drives the timed crossfade between the two active image textures.
@@ -55,7 +44,7 @@ export class CrossfadeController {
    * URL currently loaded into slots 0 and 1. Used to pick a *different* image
    * for the next crossfade so "next texture" never fades an image into itself.
    */
-  private slotUrl: (string | null)[] = [null, null];
+  private slotUrl: [string | null, string | null] = [null, null];
   private tex: TextureManager;
   private renderer: Renderer;
   private texLabel: HTMLElement;
@@ -101,7 +90,7 @@ export class CrossfadeController {
     this.fade = Math.min(this.fadeTime / FADE_DURATION, 1.0);
 
     if (this.fade >= 1.0) {
-      this.tex.swap(0, 1);
+      this.tex.swap();
       this.slotUrl[0] = this.slotUrl[1];
       this.renderer.uploadTexture(0, this.tex.pixels[0]!);
       this.texLabel.textContent = this.nextName;
@@ -184,7 +173,7 @@ export class CrossfadeController {
     const epoch = this.loadEpoch;
 
     try {
-      const { pixels, name } = await this.tex.decode(url, true);
+      const { pixels, name } = await this.tex.decode(url);
 
       if (epoch !== this.loadEpoch) return; // superseded by a drop
 
@@ -211,7 +200,7 @@ export class CrossfadeController {
     const epoch = this.loadEpoch;
 
     try {
-      const { pixels, name } = await this.tex.decode(url, true);
+      const { pixels, name } = await this.tex.decode(url);
 
       if (epoch !== this.loadEpoch) return; // superseded by a drop
 

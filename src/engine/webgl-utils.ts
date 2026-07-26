@@ -1,18 +1,7 @@
 // GLemples — real-time WebGL image warper
 // Copyright (C) 2026 Daniel Hebberd
 //
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-//
-// You should have received a copy of the GNU General Public License
-// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
  * Low-level WebGL helpers shared by the renderer.
@@ -34,7 +23,7 @@ export function createProgram(
   vert: string,
   frag: string,
 ): WebGLProgram {
-  const prog = gl.createProgram()!;
+  const prog = gl.createProgram();
   gl.attachShader(prog, compileShader(gl, gl.VERTEX_SHADER, vert));
   gl.attachShader(prog, compileShader(gl, gl.FRAGMENT_SHADER, frag));
   gl.linkProgram(prog);
@@ -87,7 +76,7 @@ export function makeTexture(
   // Annotated as number (not the inferred literal) so REPEAT can also be passed.
   wrap: number = gl.CLAMP_TO_EDGE,
 ): WebGLTexture {
-  const t = gl.createTexture()!;
+  const t = gl.createTexture();
   gl.bindTexture(gl.TEXTURE_2D, t);
   gl.texImage2D(
     gl.TEXTURE_2D,
@@ -124,7 +113,7 @@ export function makeFloatTexture(
   w: number,
   h: number,
 ): WebGLTexture {
-  const t = gl.createTexture()!;
+  const t = gl.createTexture();
   gl.bindTexture(gl.TEXTURE_2D, t);
   gl.texImage2D(
     gl.TEXTURE_2D,
@@ -155,7 +144,7 @@ export function makeFB(
   gl: WebGLRenderingContext,
   tex: WebGLTexture,
 ): WebGLFramebuffer {
-  const fb = gl.createFramebuffer()!;
+  const fb = gl.createFramebuffer();
   gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
   gl.framebufferTexture2D(
     gl.FRAMEBUFFER,

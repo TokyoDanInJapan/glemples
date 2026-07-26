@@ -27,6 +27,9 @@ computeWarpGrid (CPU)  ──►  warp grid texture  ──►  warp pass (GPU) 
 
 ## Controls
 
+The control panel appears when you move the pointer over the window. Touch
+devices never hover, so there the **☰** button in the top-right reveals it.
+
 | Control       | Effect                                       |
 | ------------- | -------------------------------------------- |
 | Motion blur   | Strength of the frame-to-frame trails        |
@@ -52,38 +55,50 @@ computeWarpGrid (CPU)  ──►  warp grid texture  ──►  warp pass (GPU) 
 Default parameters live in [`src/config.yaml`](src/config.yaml) and are loaded at build time. Edit values there - grid resolution, texture size, crossfade timing,
 initial warp settings - and the dev server hot-reloads them.
 
+Every value is range-checked as it loads, so a typo fails at startup with the
+offending key named rather than propagating through the warp field as `NaN`.
+
 ## Project structure
 
 ```
 src/
-  main.ts              Entry point: wires everything together, runs the frame loop
+  main.ts              Entry point: resolves DOM elements, reports startup failure
   config.yaml          Tunable defaults
-  engine/              Reusable rendering engine
+  engine/              Rendering engine — no dependency on app code or config
     renderer.ts        Two-pass WebGL renderer (warp + blit, ping-pong FBOs)
     warp.ts            CPU warp-grid computation (7 blended modes)
     webgl-utils.ts     Low-level WebGL helpers
-    shaders/           GLSL vertex/fragment shaders
+    shaders/           GLSL shaders (both passes share fullscreen.vert)
   app/                 App-specific glue
-    config.ts          Typed accessors over config.yaml
+    app.ts             Assembles the engine and UI, owns the frame loop
+    config.ts          Validated, typed accessors over config.yaml
+    state.ts           Live state shared by the UI and the frame loop
+    warp-animator.ts   Warp grid plus the morph between random warp states
     texture-manager.ts Image loading and pixel-slot management
     crossfade.ts       Texture crossfade state machine
     ui.ts              DOM controls, keyboard, drag-and-drop
+scripts/
+  release.mjs          Packages dist/ into a versioned zip
 ```
+
+The engine takes its grid and texture dimensions as parameters, so it can be
+reused at any size and tested without loading `config.yaml`.
 
 ## Scripts
 
-| Command                | Description                         |
-| ---------------------- | ----------------------------------- |
-| `npm run dev`          | Start the Vite dev server           |
-| `npm run build`        | Type-check and build for production |
-| `npm run preview`      | Preview the production build        |
-| `npm run lint`         | Run ESLint                          |
-| `npm run format`       | Format with Prettier                |
-| `npm run format:check` | Check formatting without writing    |
-| `npm test`             | Run the unit tests (Vitest)         |
-| `npm run test:watch`   | Run tests in watch mode             |
-| `npm run coverage`     | Run tests with a coverage report    |
-| `npm run release`      | Build and zip a versioned release   |
+| Command                | Description                           |
+| ---------------------- | ------------------------------------- |
+| `npm run dev`          | Start the Vite dev server             |
+| `npm run build`        | Type-check and build for production   |
+| `npm run preview`      | Preview the production build          |
+| `npm run typecheck`    | Type-check `src`, `tests` and configs |
+| `npm run lint`         | Run ESLint                            |
+| `npm run format`       | Format with Prettier                  |
+| `npm run format:check` | Check formatting without writing      |
+| `npm test`             | Run the unit tests (Vitest)           |
+| `npm run test:watch`   | Run tests in watch mode               |
+| `npm run coverage`     | Run tests with a coverage report      |
+| `npm run release`      | Build and zip a versioned release     |
 
 ## Releasing
 
@@ -112,3 +127,6 @@ GLemples is a WebGL port of **Drempels** by **Ryan Geiss**. See
 
 Licensed under the **GNU General Public License v3.0 or later** (GPL-3.0-or-later).
 See [LICENSE](LICENSE) for the full text.
+
+Source files carry an [SPDX](https://spdx.dev/) short-form identifier
+(`SPDX-License-Identifier: GPL-3.0-or-later`) rather than the full notice.

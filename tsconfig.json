@@ -4,12 +4,16 @@
     "module": "ESNext",
     "moduleResolution": "bundler",
     "strict": true,
+    // Vite emits the bundle; tsc is only ever run as a type-checker.
+    "noEmit": true,
+    // Third-party declaration files are not ours to fix.
+    "skipLibCheck": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noImplicitReturns": true,
-    "lib": ["ES2020", "DOM"],
-    "outDir": "dist",
-    "rootDir": "src"
+    "noUncheckedIndexedAccess": true,
+    "verbatimModuleSyntax": true,
+    "lib": ["ES2020", "DOM"]
   },
   "include": ["src"]
 }

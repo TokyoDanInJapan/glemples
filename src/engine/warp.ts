@@ -1,18 +1,7 @@
 // GLemples — real-time WebGL image warper
 // Copyright (C) 2026 Daniel Hebberd
 //
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-//
-// You should have received a copy of the GNU General Public License
-// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
  * Computes the per-frame UV warp grid.
@@ -26,7 +15,21 @@
  * @packageDocumentation
  */
 
-import { UV_CELLS_X, UV_CELLS_Y } from "../app/config.js";
+/** Dimensions, in cells, of the warp grid to compute. */
+export interface WarpGridSize {
+  /** Number of sample columns. Must be at least 2. */
+  cols: number;
+  /** Number of sample rows. Must be at least 2. */
+  rows: number;
+}
+
+/**
+ * Mode weights below this contribute less than a texel of displacement on a
+ * 1024² texture, so the mode is skipped entirely for that frame. Weights are
+ * L2-normalised, and the heavily-exponentiated modes (notably mode 2, a 12th
+ * power) sit under the threshold for most of their cycle.
+ */
+const MODE_WEIGHT_EPSILON = 1e-4;
 
 /** Live, user-tunable parameters controlling the overall warp character. */
 export interface WarpParams {
@@ -67,6 +70,20 @@ export interface WarpState {
   rotationalSpeed: number;
   /** Multiplier on how fast mode weights cycle. */
   modeSwitchSpeedMultiplier: number;
+}
+
+/**
+ * Mutable displacement pair.
+ *
+ * @remarks
+ * Modes write their result here rather than returning a fresh `[u, v]` tuple:
+ * the inner loop evaluates up to seven modes for every one of `cols × rows`
+ * cells, every frame, so a single reused scratch object keeps that path free of
+ * allocation regardless of whether the engine manages to scalar-replace it.
+ */
+interface Vec2 {
+  u: number;
+  v: number;
 }
 
 /** All per-frame derived values shared across warp modes (built once per frame). */
@@ -132,6 +149,17 @@ export function randomizeState(modeSwitchSpeedMultiplier = 1.0): WarpState {
   };
 }
 
+/** Blend weight for each of the seven warp modes, in mode order. */
+export type ModeWeights = [
+  number,
+  number,
+  number,
+  number,
+  number,
+  number,
+  number,
+];
+
 /**
  * Computes the seven normalised mode-blend weights for the current time.
  *
@@ -142,40 +170,43 @@ export function randomizeState(modeSwitchSpeedMultiplier = 1.0): WarpState {
  * @param animTime - Current animation time.
  * @param state - Warp state providing the random phase seeds.
  * @param focusExp - Sharpening exponent (see {@link WarpParams.modeFocusExponent}).
- * @returns A length-7 array of weights summing (in L2) to 1.
+ * @param out - Pre-allocated weight tuple, mutated in place.
  */
 function computeModeWeights(
   animTime: number,
   state: WarpState,
   focusExp: number,
-): Float32Array {
+  out: ModeWeights,
+): void {
   const { randStart: rs, modeSwitchSpeedMultiplier: mss } = state;
-  const t = new Float32Array(7);
 
-  t[0] = Math.pow(0.5 + 0.5 * Math.sin(animTime * mss * 0.1216 + rs[0]), 1.0);
-  t[1] = Math.pow(0.48 + 0.48 * Math.sin(animTime * mss * 0.0625 + rs[1]), 2.0);
-  t[2] = Math.pow(
+  out[0] = Math.pow(0.5 + 0.5 * Math.sin(animTime * mss * 0.1216 + rs[0]), 1.0);
+  out[1] = Math.pow(
+    0.48 + 0.48 * Math.sin(animTime * mss * 0.0625 + rs[1]),
+    2.0,
+  );
+  out[2] = Math.pow(
     0.45 + 0.45 * Math.sin(animTime * mss * 0.0253 + rs[2]),
     12.0,
   );
-  t[3] = Math.pow(0.5 + 0.5 * Math.sin(animTime * mss * 0.0916 + rs[3]), 2.0);
-  t[4] = Math.pow(0.5 + 0.5 * Math.sin(animTime * mss * 0.0625 + rs[0]), 2.0);
-  t[5] = Math.pow(0.7 + 0.5 * Math.sin(animTime * mss * 0.0466 + rs[1]), 1.0);
-  t[6] = Math.pow(0.5 + 0.5 * Math.sin(animTime * mss * 0.0587 + rs[2]), 2.0);
+  out[3] = Math.pow(0.5 + 0.5 * Math.sin(animTime * mss * 0.0916 + rs[3]), 2.0);
+  out[4] = Math.pow(0.5 + 0.5 * Math.sin(animTime * mss * 0.0625 + rs[0]), 2.0);
+  out[5] = Math.pow(0.7 + 0.5 * Math.sin(animTime * mss * 0.0466 + rs[1]), 1.0);
+  out[6] = Math.pow(0.5 + 0.5 * Math.sin(animTime * mss * 0.0587 + rs[2]), 2.0);
 
   // L2-normalise, sharpen towards dominant mode, bias mode 0, re-normalise.
-  const l2 = (arr: Float32Array) =>
-    Math.sqrt(arr.reduce((s, v) => s + v * v, 0));
-  const scale = (arr: Float32Array, f: number) => {
-    for (let i = 0; i < arr.length; i++) arr[i] *= f;
-  };
+  normaliseL2(out);
+  for (let i = 0; i < out.length; i++) out[i] = Math.pow(out[i]!, focusExp);
+  out[0] += 0.2;
+  normaliseL2(out);
+}
 
-  scale(t, 1 / l2(t));
-  for (let i = 0; i < t.length; i++) t[i] = Math.pow(t[i], focusExp);
-  t[0] += 0.2;
-  scale(t, 1 / l2(t));
-
-  return t;
+/** Scales a weight tuple in place so its Euclidean length is 1. */
+function normaliseL2(w: ModeWeights): void {
+  let sumSq = 0;
+  for (const v of w) sumSq += v * v;
+  const f = 1 / Math.sqrt(sumSq);
+  for (let i = 0; i < w.length; i++) w[i] = w[i]! * f;
 }
 
 /**
@@ -185,13 +216,14 @@ function computeModeWeights(
  * @param bua - Aspect-corrected base U for the cell.
  * @param bv - Base V for the cell.
  * @param ctx - Shared per-frame context.
- * @returns The mode's `[u, v]` displacement.
+ * @param out - Receives the mode's displacement.
  */
 function modeDrempels(
   bua: number,
   bv: number,
   ctx: FrameContext,
-): [number, number] {
+  out: Vec2,
+): void {
   const { warpFactor, intframe2, osc, scale, cosRot, sinRot } = ctx;
   let u = bua;
   let v = bv;
@@ -234,7 +266,8 @@ function modeDrempels(
   v = ut * sinRot + v * cosRot;
   u += 2.0 * Math.sin(intframe2 * 0.00613);
   v += 2.0 * Math.cos(intframe2 * 0.0138);
-  return [u, v];
+  out.u = u;
+  out.v = v;
 }
 
 /**
@@ -243,19 +276,21 @@ function modeDrempels(
  * @param bua - Aspect-corrected base U.
  * @param bv - Base V.
  * @param ctx - Shared per-frame context.
- * @returns The mode's `[u, v]` displacement.
+ * @param out - Receives the mode's displacement.
  */
 function modeStomach(
   bua: number,
   bv: number,
   ctx: FrameContext,
-): [number, number] {
+  out: Vec2,
+): void {
   const { animTime, rs } = ctx;
   const rad = Math.sqrt(bua * bua + bv * bv);
   const ang = Math.atan2(bua, bv);
   const rad2 = rad * (1.0 + 0.3 * Math.sin(animTime * 0.53 + ang + rs[1]));
   const ang2 = ang + 0.9 * Math.sin(animTime * 0.45 + rad * 4.2 + rs[2]);
-  return [Math.cos(ang2) * rad2 * 1.7, Math.sin(ang2) * rad2 * 1.7];
+  out.u = Math.cos(ang2) * rad2 * 1.7;
+  out.v = Math.sin(ang2) * rad2 * 1.7;
 }
 
 /**
@@ -265,20 +300,22 @@ function modeStomach(
  * @param bua - Aspect-corrected base U.
  * @param bv - Base V.
  * @param ctx - Shared per-frame context.
- * @returns The mode's `[u, v]` displacement.
+ * @param out - Receives the mode's displacement.
  */
 function modeCrazy(
   bua: number,
   bv: number,
   ctx: FrameContext,
-): [number, number] {
+  out: Vec2,
+): void {
   const { animTime, rs } = ctx;
   const rad = Math.sqrt(bua * bua + bv * bv);
   const ang = Math.atan2(bua, bv);
   const rad2 =
     rad * (1.0 + 0.3 * Math.sin(animTime * 1.59 + ang * 20.4 + rs[2]));
   const ang2 = ang + 1.8 * Math.sin(animTime * 1.35 + rad * 22.1 + rs[3]);
-  return [Math.cos(ang2) * rad2, Math.sin(ang2) * rad2];
+  out.u = Math.cos(ang2) * rad2;
+  out.v = Math.sin(ang2) * rad2;
 }
 
 /**
@@ -287,17 +324,19 @@ function modeCrazy(
  * @param bua - Aspect-corrected base U.
  * @param bv - Base V.
  * @param ctx - Shared per-frame context.
- * @returns The mode's `[u, v]` displacement.
+ * @param out - Receives the mode's displacement.
  */
 function modeRotation(
   bua: number,
   bv: number,
   ctx: FrameContext,
-): [number, number] {
+  out: Vec2,
+): void {
   const { t3uc, t3vc, cost3, sint3 } = ctx;
   const u = bua * 1.6 - t3uc;
   const v = bv * 1.6 - t3vc;
-  return [u * cost3 - v * sint3 + t3uc, u * sint3 + v * cost3 + t3vc];
+  out.u = u * cost3 - v * sint3 + t3uc;
+  out.v = u * sint3 + v * cost3 + t3vc;
 }
 
 /**
@@ -307,19 +346,21 @@ function modeRotation(
  * @param bua - Aspect-corrected base U.
  * @param bv - Base V.
  * @param ctx - Shared per-frame context.
- * @returns The mode's `[u, v]` displacement.
+ * @param out - Receives the mode's displacement.
  */
 function modeZoomRotate(
   bua: number,
   bv: number,
   ctx: FrameContext,
-): [number, number] {
+  out: Vec2,
+): void {
   const { fscale1, t4uc, t4vc, t3uc, t3vc, cost4, sint4 } = ctx;
   const u0 = bua - t4uc;
   const v0 = bv - t4vc;
   const u1 = u0 * fscale1 + t4uc - t3uc;
   const v1 = v0 * fscale1 + t4vc - t3uc; // t3uc for both offsets — matches original
-  return [u1 * cost4 - v1 * sint4 + t3uc, u1 * sint4 + v1 * cost4 + t3vc];
+  out.u = u1 * cost4 - v1 * sint4 + t3uc;
+  out.v = u1 * sint4 + v1 * cost4 + t3vc;
 }
 
 /**
@@ -329,13 +370,14 @@ function modeZoomRotate(
  * @param bua - Aspect-corrected base U.
  * @param bv - Base V.
  * @param ctx - Shared per-frame context.
- * @returns The mode's `[u, v]` displacement.
+ * @param out - Receives the mode's displacement.
  */
 function modeSwirlies(
   bua: number,
   bv: number,
   ctx: FrameContext,
-): [number, number] {
+  out: Vec2,
+): void {
   const { animTime, rs, fscale2, fscale3, fscale4, fscale5 } = ctx;
   const u = bua * 1.4;
   const v = bv * 1.4;
@@ -369,7 +411,8 @@ function modeSwirlies(
         animTime * 0.58 +
         2.0,
     );
-  return [u2 * 1.25, v2 * 1.25];
+  out.u = u2 * 1.25;
+  out.v = v2 * 1.25;
 }
 
 /**
@@ -379,22 +422,21 @@ function modeSwirlies(
  * @param bua - Aspect-corrected base U.
  * @param bv - Base V.
  * @param ctx - Shared per-frame context.
- * @returns The mode's `[u, v]` displacement.
+ * @param out - Receives the mode's displacement.
  */
 function modeTunnel(
   bua: number,
   bv: number,
   ctx: FrameContext,
-): [number, number] {
+  out: Vec2,
+): void {
   const { animTime, rs, t4uc, t4vc } = ctx;
   const u = bua * 1.4 - t4vc;
   const v = bv * 1.4 - t4uc;
   const rad = Math.sqrt(u * u + v * v);
   const ang = Math.atan2(u, v);
-  return [
-    rad + 3.0 * Math.sin(animTime * 0.133 + rs[0]) + t4vc,
-    rad * 0.05 * Math.cos(ang + animTime * 0.079 + rs[3]) + t4uc,
-  ];
+  out.u = rad + 3.0 * Math.sin(animTime * 0.133 + rs[0]) + t4vc;
+  out.v = rad * 0.05 * Math.cos(ang + animTime * 0.079 + rs[3]) + t4uc;
 }
 
 /**
@@ -494,11 +536,14 @@ function buildFrameContext(
 }
 
 /**
- * Fills the warp grid for one frame by blending all seven modes per cell.
+ * Fills the warp grid for one frame by blending the seven modes per cell.
  *
  * @remarks
- * Writes `UV_CELLS_X * UV_CELLS_Y * 2` floats into `gridOut`, packed as
+ * Writes `size.cols * size.rows * 2` floats into `gridOut`, packed as
  * `[u0, v0, u1, v1, …]` in row-major order, in `[0, 1]` texture-coordinate space.
+ *
+ * Modes whose blend weight falls below {@link MODE_WEIGHT_EPSILON} are skipped,
+ * which typically retires two or three of the seven per frame.
  *
  * @param animTime - Current animation time.
  * @param params - Live warp parameters.
@@ -506,59 +551,81 @@ function buildFrameContext(
  * @param rotation - Accumulated base-rotation angle, in radians (see
  *   {@link buildFrameContext}). The caller integrates `rotationalSpeed` over time
  *   and passes the running total here so rotation stays continuous across re-rolls.
- * @param gridOut - Pre-allocated output buffer, mutated in place.
+ * @param size - Grid dimensions in cells.
+ * @param gridOut - Pre-allocated output buffer, mutated in place. Must hold at
+ *   least `size.cols * size.rows * 2` elements.
  */
 export function computeWarpGrid(
   animTime: number,
   params: WarpParams,
   state: WarpState,
   rotation: number,
+  size: WarpGridSize,
   gridOut: Float32Array,
 ): void {
+  const { cols, rows } = size;
   const ctx = buildFrameContext(animTime, params, state, rotation);
-  const t = computeModeWeights(animTime, state, params.modeFocusExponent);
+  const t: ModeWeights = [0, 0, 0, 0, 0, 0, 0];
+  computeModeWeights(animTime, state, params.modeFocusExponent, t);
+
   const zoom =
     (1.0 / (params.masterZoom * 1.8)) *
     Math.pow(4.0, 1.0 - params.texScale * 0.1);
 
-  for (let j = 0; j < UV_CELLS_Y; j++) {
-    for (let i = 0; i < UV_CELLS_X; i++) {
-      const baseU = i / (UV_CELLS_X - 1) - 0.5;
-      const baseV = -(j / (UV_CELLS_Y - 1) - 0.5);
-      const bua = baseU * 1.333;
+  const [w0, w1, w2, w3, w4, w5, w6] = t;
+  const s: Vec2 = { u: 0, v: 0 };
 
-      const [u0, v0] = modeDrempels(bua, baseV, ctx);
-      const [u1, v1] = modeStomach(bua, baseV, ctx);
-      const [u2, v2] = modeCrazy(bua, baseV, ctx);
-      const [u3, v3] = modeRotation(bua, baseV, ctx);
-      const [u4, v4] = modeZoomRotate(bua, baseV, ctx);
-      const [u5, v5] = modeSwirlies(bua, baseV, ctx);
-      const [u6, v6] = modeTunnel(bua, baseV, ctx);
+  for (let j = 0; j < rows; j++) {
+    const baseV = -(j / (rows - 1) - 0.5);
 
-      const cu =
-        (u0 * t[0] +
-          u1 * t[1] +
-          u2 * t[2] +
-          u3 * t[3] +
-          u4 * t[4] +
-          u5 * t[5] +
-          u6 * t[6]) *
-          zoom +
-        0.5;
-      const cv =
-        (v0 * t[0] +
-          v1 * t[1] +
-          v2 * t[2] +
-          v3 * t[3] +
-          v4 * t[4] +
-          v5 * t[5] +
-          v6 * t[6]) *
-          zoom +
-        0.5;
+    for (let i = 0; i < cols; i++) {
+      const bua = (i / (cols - 1) - 0.5) * 1.333;
 
-      const idx = (j * UV_CELLS_X + i) * 2;
-      gridOut[idx] = cu;
-      gridOut[idx + 1] = cv;
+      // Unrolled rather than looped over a mode table: seven distinct callees
+      // behind one indexed call site would be megamorphic in the hottest loop
+      // in the app.
+      let cu = 0;
+      let cv = 0;
+
+      if (w0 > MODE_WEIGHT_EPSILON) {
+        modeDrempels(bua, baseV, ctx, s);
+        cu += s.u * w0;
+        cv += s.v * w0;
+      }
+      if (w1 > MODE_WEIGHT_EPSILON) {
+        modeStomach(bua, baseV, ctx, s);
+        cu += s.u * w1;
+        cv += s.v * w1;
+      }
+      if (w2 > MODE_WEIGHT_EPSILON) {
+        modeCrazy(bua, baseV, ctx, s);
+        cu += s.u * w2;
+        cv += s.v * w2;
+      }
+      if (w3 > MODE_WEIGHT_EPSILON) {
+        modeRotation(bua, baseV, ctx, s);
+        cu += s.u * w3;
+        cv += s.v * w3;
+      }
+      if (w4 > MODE_WEIGHT_EPSILON) {
+        modeZoomRotate(bua, baseV, ctx, s);
+        cu += s.u * w4;
+        cv += s.v * w4;
+      }
+      if (w5 > MODE_WEIGHT_EPSILON) {
+        modeSwirlies(bua, baseV, ctx, s);
+        cu += s.u * w5;
+        cv += s.v * w5;
+      }
+      if (w6 > MODE_WEIGHT_EPSILON) {
+        modeTunnel(bua, baseV, ctx, s);
+        cu += s.u * w6;
+        cv += s.v * w6;
+      }
+
+      const idx = (j * cols + i) * 2;
+      gridOut[idx] = cu * zoom + 0.5;
+      gridOut[idx + 1] = cv * zoom + 0.5;
     }
   }
 }

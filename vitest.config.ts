@@ -10,7 +10,8 @@ export default defineConfig({
     coverage: {
       provider: "v8",
       include: ["src/**/*.ts"],
-      // Entry point and ambient types have no testable logic.
+      // The entry point is DOM lookup and wiring only — everything it drives
+      // lives in app/app.ts. Ambient types have no logic at all.
       exclude: ["src/main.ts", "src/vite-env.d.ts"],
       reporter: ["text", "html"],
     },

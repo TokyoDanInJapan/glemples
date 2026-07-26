@@ -36,9 +36,44 @@
         transition: opacity 0.3s;
         pointer-events: none;
       }
-      body:hover #ui {
+      /* focus-within keeps the panel reachable by keyboard on any device. */
+      body:focus-within #ui {
         opacity: 1;
         pointer-events: all;
+      }
+
+      #btnToggleUi {
+        display: none;
+        position: fixed;
+        top: 12px;
+        right: 12px;
+        z-index: 1;
+        width: 32px;
+        height: 32px;
+        line-height: 1;
+      }
+
+      /* Pointer devices: hovering anywhere reveals the panel, so the explicit
+         toggle would only get in its way — it stays hidden. */
+      @media (hover: hover) {
+        body:hover #ui {
+          opacity: 1;
+          pointer-events: all;
+        }
+      }
+
+      /* Touch devices never hover, so the toggle is the only way in. */
+      @media (hover: none) {
+        #btnToggleUi {
+          display: block;
+        }
+        body.ui-open #ui {
+          opacity: 1;
+          pointer-events: all;
+        }
+        body.ui-open #btnToggleUi {
+          display: none;
+        }
       }
 
       #ui label {
@@ -50,7 +85,8 @@
       #ui input[type="range"] {
         width: 100px;
       }
-      #ui button {
+      #ui button,
+      #btnToggleUi {
         background: rgba(255, 255, 255, 0.1);
         border: 1px solid rgba(255, 255, 255, 0.2);
         color: #ccc;
@@ -59,7 +95,8 @@
         font-family: monospace;
         font-size: 12px;
       }
-      #ui button:hover {
+      #ui button:hover,
+      #btnToggleUi:hover {
         background: rgba(255, 255, 255, 0.2);
       }
 
@@ -103,23 +140,18 @@
   <body>
     <canvas id="c"></canvas>
 
+    <button id="btnToggleUi" aria-label="Show controls" aria-expanded="false">
+      ☰
+    </button>
+
     <div id="ui">
-      <!-- Slider positions are set at startup from config.yaml (see bindUI). -->
-      <label
-        >Motion blur <input type="range" id="blur" min="0" max="10" step="1"
-      /></label>
-      <label
-        >Warp amount <input type="range" id="warp" min="0" max="100" step="1"
-      /></label>
-      <label
-        >Zoom <input type="range" id="zoom" min="1" max="300" step="1"
-      /></label>
-      <label
-        >Speed <input type="range" id="speed" min="10" max="300" step="1"
-      /></label>
-      <label
-        >Tex interval<input type="range" id="texint" min="5" max="120" step="5"
-      /></label>
+      <!-- Slider ranges and positions are both set at startup from the slider
+           table in app/ui.ts, which is also where the value mappings live. -->
+      <label>Motion blur <input type="range" id="blur" /></label>
+      <label>Warp amount <input type="range" id="warp" /></label>
+      <label>Zoom <input type="range" id="zoom" /></label>
+      <label>Speed <input type="range" id="speed" /></label>
+      <label>Tex interval<input type="range" id="texint" /></label>
       <button id="btnNextTex">Next texture (Space)</button>
       <button id="btnPause">Pause (P)</button>
       <button id="btnFullscreen">Fullscreen (F)</button>

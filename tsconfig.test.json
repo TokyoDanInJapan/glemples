@@ -1,0 +1,12 @@
+{
+  // Widens the src-only project to cover tests and the build config, so CI
+  // type-checks everything rather than just what ships.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    // The config files are Node programs; the tests are not, but sharing one
+    // project keeps this to a single tsc invocation.
+    "lib": ["ESNext", "DOM"],
+    "types": ["node"]
+  },
+  "include": ["src", "tests", "*.config.ts"]
+}

@@ -1,32 +1,53 @@
 {
   "name": "glemples",
   "version": "1.0.0",
+  "private": true,
   "type": "module",
+  "description": "A real-time, WebGL image-warping visualiser — a browser port of the classic Drempels / Geiss warp.",
+  "keywords": [
+    "webgl",
+    "visualiser",
+    "drempels",
+    "geiss",
+    "shader",
+    "image-warp"
+  ],
   "license": "GPL-3.0-or-later",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/TokyoDanInJapan/glemples.git"
+  },
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
+    "build": "npm run typecheck && vite build",
     "preview": "vite preview",
+    "typecheck": "tsc -p tsconfig.test.json",
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "vitest run",
     "test:watch": "vitest",
     "coverage": "vitest run --coverage",
-    "release": "npm run build && mkdir -p releases && rm -f releases/glemples-$npm_package_version.zip && cd dist && zip -rq ../releases/glemples-$npm_package_version.zip .",
+    "release": "npm run build && node scripts/release.mjs",
     "prepare": "husky"
   },
   "overrides": {
-    "js-yaml": "^4.1.1"
+    "js-yaml": "^4.3.0",
+    "brace-expansion": "^5.0.8"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@modyfi/vite-plugin-yaml": "^1.1.1",
+    "@types/node": "^26.1.1",
     "@vitest/coverage-v8": "^4.1.10",
     "eslint": "^10.7.0",
     "eslint-config-prettier": "^10.1.8",
     "globals": "^17.7.0",
     "husky": "^9.1.7",
+    "jsdom": "^29.1.1",
     "prettier": "^3.9.5",
     "typescript": "^5.4.0",
     "typescript-eslint": "^8.64.0",

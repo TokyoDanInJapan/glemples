@@ -1,25 +1,13 @@
 // GLemples — real-time WebGL image warper
 // Copyright (C) 2026 Daniel Hebberd
 //
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-//
-// You should have received a copy of the GNU General Public License
-// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+// SPDX-License-Identifier: GPL-3.0-or-later
 
-import warpVertSrc from "./shaders/warp.vert?raw";
+// Both passes draw the same full-screen triangle strip, so they share a vertex
+// shader.
+import fullscreenVertSrc from "./shaders/fullscreen.vert?raw";
 import warpFragSrc from "./shaders/warp.frag?raw";
-import blitVertSrc from "./shaders/blit.vert?raw";
 import blitFragSrc from "./shaders/blit.frag?raw";
-
-import { UV_CELLS_X, UV_CELLS_Y, TEXTURE_SIZE } from "../app/config.js";
 
 import {
   createProgram,
@@ -28,6 +16,16 @@ import {
   makeFB,
   bindUnit,
 } from "./webgl-utils.js";
+
+/** Fixed dimensions the renderer allocates its GL resources against. */
+export interface RendererOptions {
+  /** Warp-grid columns; must match the grid the caller computes. */
+  gridWidth: number;
+  /** Warp-grid rows; must match the grid the caller computes. */
+  gridHeight: number;
+  /** Edge length of each square source texture. Power-of-two for `REPEAT` wrap. */
+  textureSize: number;
+}
 
 /**
  * Two-pass WebGL renderer for the warp effect.
@@ -38,10 +36,14 @@ import {
  * ping-pong framebuffer), followed by a **blit pass** that copies the result to
  * the canvas. The framebuffers are then swapped so this frame becomes next
  * frame's motion-blur source.
+ *
+ * Grid and texture dimensions are supplied by the caller so this module stays
+ * independent of application configuration.
  */
 export class Renderer {
   private gl: WebGLRenderingContext;
   private canvas: HTMLCanvasElement;
+  private opts: RendererOptions;
 
   private warpProg!: WebGLProgram;
   private warpU!: {
@@ -61,15 +63,16 @@ export class Renderer {
   private imgTex!: [WebGLTexture, WebGLTexture];
   private fbTex!: [WebGLTexture, WebGLTexture];
   private fb!: [WebGLFramebuffer, WebGLFramebuffer];
-  private front = 0;
+  private front: 0 | 1 = 0;
 
   /**
    * Sets up both shader programs, the geometry, and all textures/framebuffers.
    *
    * @param canvas - The canvas to render into.
+   * @param opts - Grid and texture dimensions to allocate against.
    * @throws If WebGL or the required `OES_texture_float` extension is unavailable.
    */
-  constructor(canvas: HTMLCanvasElement) {
+  constructor(canvas: HTMLCanvasElement, opts: RendererOptions) {
     const gl = canvas.getContext("webgl", {
       antialias: false,
       preserveDrawingBuffer: false,
@@ -79,6 +82,7 @@ export class Renderer {
 
     this.gl = gl;
     this.canvas = canvas;
+    this.opts = opts;
     this.init();
   }
 
@@ -101,7 +105,7 @@ export class Renderer {
 
     this.front = 0;
 
-    const quadBuf = gl.createBuffer()!;
+    const quadBuf = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, quadBuf);
     gl.bufferData(
       gl.ARRAY_BUFFER,
@@ -109,7 +113,7 @@ export class Renderer {
       gl.STATIC_DRAW,
     );
 
-    this.warpProg = createProgram(gl, warpVertSrc, warpFragSrc);
+    this.warpProg = createProgram(gl, fullscreenVertSrc, warpFragSrc);
     gl.useProgram(this.warpProg);
 
     const warpAPos = gl.getAttribLocation(this.warpProg, "a_pos");
@@ -127,7 +131,7 @@ export class Renderer {
       gridSize: gl.getUniformLocation(this.warpProg, "u_gridSize")!,
     };
 
-    this.blitProg = createProgram(gl, blitVertSrc, blitFragSrc);
+    this.blitProg = createProgram(gl, fullscreenVertSrc, blitFragSrc);
     gl.useProgram(this.blitProg);
 
     const blitAPos = gl.getAttribLocation(this.blitProg, "a_pos");
@@ -137,11 +141,13 @@ export class Renderer {
 
     this.blitU = { tex: gl.getUniformLocation(this.blitProg, "u_tex")! };
 
-    this.gridTex = makeFloatTexture(gl, UV_CELLS_X, UV_CELLS_Y);
+    const { gridWidth, gridHeight, textureSize } = this.opts;
+
+    this.gridTex = makeFloatTexture(gl, gridWidth, gridHeight);
 
     this.imgTex = [
-      makeTexture(gl, TEXTURE_SIZE, TEXTURE_SIZE, null, gl.LINEAR, gl.REPEAT),
-      makeTexture(gl, TEXTURE_SIZE, TEXTURE_SIZE, null, gl.LINEAR, gl.REPEAT),
+      makeTexture(gl, textureSize, textureSize, null, gl.LINEAR, gl.REPEAT),
+      makeTexture(gl, textureSize, textureSize, null, gl.LINEAR, gl.REPEAT),
     ];
 
     this.fbTex = [
@@ -161,8 +167,8 @@ export class Renderer {
   resize(w: number, h: number): void {
     const gl = this.gl;
 
-    for (let i = 0; i < 2; i++) {
-      gl.bindTexture(gl.TEXTURE_2D, this.fbTex[i]);
+    for (const tex of this.fbTex) {
+      gl.bindTexture(gl.TEXTURE_2D, tex);
       gl.texImage2D(
         gl.TEXTURE_2D,
         0,
@@ -181,18 +187,22 @@ export class Renderer {
    * Uploads RGBA pixels into one of the two source image textures.
    *
    * @param slot - Which image texture to replace (0 or 1).
-   * @param pixels - RGBA data of size {@link TEXTURE_SIZE}².
+   * @param pixels - RGBA data of size {@link RendererOptions.textureSize}².
    */
   uploadTexture(slot: 0 | 1, pixels: Uint8ClampedArray): void {
     const gl = this.gl;
+    const size = this.opts.textureSize;
+
     gl.bindTexture(gl.TEXTURE_2D, this.imgTex[slot]);
-    gl.texImage2D(
+    // Storage was allocated at the same size in init(), so this is a subimage
+    // update rather than a reallocation.
+    gl.texSubImage2D(
       gl.TEXTURE_2D,
       0,
-      gl.RGBA,
-      TEXTURE_SIZE,
-      TEXTURE_SIZE,
       0,
+      0,
+      size,
+      size,
       gl.RGBA,
       gl.UNSIGNED_BYTE,
       pixels,
@@ -208,17 +218,20 @@ export class Renderer {
    */
   render(gridData: Float32Array, motionBlur: number, texFade: number): void {
     const gl = this.gl;
-    const back = 1 - this.front;
+    const back = this.front === 0 ? 1 : 0;
+    const { gridWidth, gridHeight } = this.opts;
 
-    // Upload warp grid as LUMINANCE_ALPHA float texture.
+    // Refresh the warp grid (a LUMINANCE_ALPHA float texture). texSubImage2D
+    // rather than texImage2D: the storage never changes size, and reallocating
+    // it sixty times a second is pure waste.
     gl.bindTexture(gl.TEXTURE_2D, this.gridTex);
-    gl.texImage2D(
+    gl.texSubImage2D(
       gl.TEXTURE_2D,
       0,
-      gl.LUMINANCE_ALPHA,
-      UV_CELLS_X,
-      UV_CELLS_Y,
       0,
+      0,
+      gridWidth,
+      gridHeight,
       gl.LUMINANCE_ALPHA,
       gl.FLOAT,
       gridData,
@@ -236,7 +249,7 @@ export class Renderer {
 
     gl.uniform1f(this.warpU.blend, motionBlur);
     gl.uniform1f(this.warpU.texfade, texFade);
-    gl.uniform2f(this.warpU.gridSize, UV_CELLS_X, UV_CELLS_Y);
+    gl.uniform2f(this.warpU.gridSize, gridWidth, gridHeight);
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);

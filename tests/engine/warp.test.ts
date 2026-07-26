@@ -5,7 +5,10 @@ import {
   type WarpParams,
   type WarpState,
 } from "../../src/engine/warp.js";
-import { UV_CELLS_X, UV_CELLS_Y } from "../../src/app/config.js";
+
+// The engine takes its dimensions from the caller, so the tests pick their own
+// rather than inheriting whatever config.yaml happens to say.
+const SIZE = { cols: 36, rows: 28 };
 
 const PARAMS: WarpParams = {
   warpFactor: 0.22,
@@ -15,7 +18,7 @@ const PARAMS: WarpParams = {
   speedScale: 10,
 };
 
-const GRID_LEN = UV_CELLS_X * UV_CELLS_Y * 2;
+const GRID_LEN = SIZE.cols * SIZE.rows * 2;
 
 describe("randomizeState", () => {
   it("produces four oscillators and four phase seeds", () => {
@@ -73,7 +76,7 @@ describe("computeWarpGrid", () => {
 
   it("fills the entire grid buffer with finite numbers", () => {
     const out = new Float32Array(GRID_LEN);
-    computeWarpGrid(1.5, PARAMS, fixedState, 0.3, out);
+    computeWarpGrid(1.5, PARAMS, fixedState, 0.3, SIZE, out);
     expect(out).toHaveLength(GRID_LEN);
     for (const v of out) expect(Number.isFinite(v)).toBe(true);
   });
@@ -81,38 +84,52 @@ describe("computeWarpGrid", () => {
   it("is deterministic for identical inputs", () => {
     const a = new Float32Array(GRID_LEN);
     const b = new Float32Array(GRID_LEN);
-    computeWarpGrid(2.0, PARAMS, fixedState, 0.4, a);
-    computeWarpGrid(2.0, PARAMS, fixedState, 0.4, b);
+    computeWarpGrid(2.0, PARAMS, fixedState, 0.4, SIZE, a);
+    computeWarpGrid(2.0, PARAMS, fixedState, 0.4, SIZE, b);
     expect(Array.from(a)).toEqual(Array.from(b));
   });
 
   it("changes output as animation time advances", () => {
     const t0 = new Float32Array(GRID_LEN);
     const t1 = new Float32Array(GRID_LEN);
-    computeWarpGrid(0.0, PARAMS, fixedState, 0.0, t0);
-    computeWarpGrid(5.0, PARAMS, fixedState, 0.0, t1);
+    computeWarpGrid(0.0, PARAMS, fixedState, 0.0, SIZE, t0);
+    computeWarpGrid(5.0, PARAMS, fixedState, 0.0, SIZE, t1);
     expect(Array.from(t0)).not.toEqual(Array.from(t1));
   });
 
   it("rotates the field as the rotation angle advances", () => {
     const r0 = new Float32Array(GRID_LEN);
     const r1 = new Float32Array(GRID_LEN);
-    computeWarpGrid(1.0, PARAMS, fixedState, 0.0, r0);
-    computeWarpGrid(1.0, PARAMS, fixedState, 1.0, r1);
+    computeWarpGrid(1.0, PARAMS, fixedState, 0.0, SIZE, r0);
+    computeWarpGrid(1.0, PARAMS, fixedState, 1.0, SIZE, r1);
     expect(Array.from(r0)).not.toEqual(Array.from(r1));
   });
 
   it("responds to master zoom", () => {
     const a = new Float32Array(GRID_LEN);
     const b = new Float32Array(GRID_LEN);
-    computeWarpGrid(1.0, { ...PARAMS, masterZoom: 1.0 }, fixedState, 0.0, a);
-    computeWarpGrid(1.0, { ...PARAMS, masterZoom: 2.0 }, fixedState, 0.0, b);
+    computeWarpGrid(
+      1.0,
+      { ...PARAMS, masterZoom: 1.0 },
+      fixedState,
+      0.0,
+      SIZE,
+      a,
+    );
+    computeWarpGrid(
+      1.0,
+      { ...PARAMS, masterZoom: 2.0 },
+      fixedState,
+      0.0,
+      SIZE,
+      b,
+    );
     expect(Array.from(a)).not.toEqual(Array.from(b));
   });
 
   it("produces a varying field across the grid (not a constant)", () => {
     const out = new Float32Array(GRID_LEN);
-    computeWarpGrid(1.0, PARAMS, fixedState, 0.0, out);
+    computeWarpGrid(1.0, PARAMS, fixedState, 0.0, SIZE, out);
     let min = Infinity;
     let max = -Infinity;
     for (const v of out) {

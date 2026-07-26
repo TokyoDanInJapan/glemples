@@ -1,18 +1,7 @@
 // GLemples — real-time WebGL image warper
 // Copyright (C) 2026 Daniel Hebberd
 //
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-//
-// You should have received a copy of the GNU General Public License
-// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
  * Loads source images and maintains the CPU-side RGBA pixel buffers ("slots")
@@ -36,7 +25,10 @@ export class TextureManager {
    * Decoded RGBA pixel buffers for the current crossfade pair
    * (`null` until first load).
    */
-  readonly pixels: (Uint8ClampedArray | null)[] = [null, null];
+  readonly pixels: [Uint8ClampedArray | null, Uint8ClampedArray | null] = [
+    null,
+    null,
+  ];
 
   /**
    * Registers dropped/selected files, keeping only supported image types.
@@ -103,32 +95,25 @@ export class TextureManager {
    * stale result (e.g. one superseded by a fresh drop) before it clobbers a slot.
    *
    * @param url - Image URL to load.
-   * @param resize - If `true`, scale to fill; otherwise centre-crop when large enough.
    * @returns The decoded pixels and the image's display name (final path segment).
    * @throws If the image fails to load.
    */
   async decode(
     url: string,
-    resize: boolean,
   ): Promise<{ pixels: Uint8ClampedArray; name: string }> {
     const img = await loadImage(url);
-    const pixels = resampleTo256(img, resize);
+    const pixels = resampleToTextureSize(img);
 
     const parts = url.split("/");
 
     return { pixels, name: parts[parts.length - 1] ?? url };
   }
 
-  /**
-   * Swaps two pixel slots (used to promote the faded-in image to slot 0).
-   *
-   * @param s1 - First slot index.
-   * @param s2 - Second slot index.
-   */
-  swap(s1: number, s2: number): void {
-    const tmp = this.pixels[s1];
-    this.pixels[s1] = this.pixels[s2];
-    this.pixels[s2] = tmp;
+  /** Swaps the two pixel slots, promoting the faded-in image to slot 0. */
+  swap(): void {
+    const tmp = this.pixels[0];
+    this.pixels[0] = this.pixels[1];
+    this.pixels[1] = tmp;
   }
 }
 
@@ -149,44 +134,27 @@ function loadImage(url: string): Promise<HTMLImageElement> {
 }
 
 /**
- * Renders an image to a {@link TEXTURE_SIZE}-square canvas and returns its RGBA pixels.
+ * Scales an image to fill a {@link TEXTURE_SIZE}-square canvas and returns its
+ * RGBA pixels.
+ *
+ * @remarks
+ * Scaling to fill (rather than centre-cropping) keeps a seamless source image
+ * seamless, which matters because the warp samples these textures with `REPEAT`
+ * wrap.
  *
  * @param img - Source image.
- * @param resize - If `true` (or the image is smaller than the target), scale to
- *   fill; otherwise centre-crop.
  * @returns RGBA pixel data of length `TEXTURE_SIZE * TEXTURE_SIZE * 4`.
+ * @throws If a 2D canvas context is unavailable.
  */
-function resampleTo256(
-  img: HTMLImageElement,
-  resize: boolean,
-): Uint8ClampedArray {
+function resampleToTextureSize(img: HTMLImageElement): Uint8ClampedArray {
   const offscreen = document.createElement("canvas");
   offscreen.width = TEXTURE_SIZE;
   offscreen.height = TEXTURE_SIZE;
-  const ctx = offscreen.getContext("2d")!;
 
-  if (
-    resize ||
-    img.naturalWidth < TEXTURE_SIZE ||
-    img.naturalHeight < TEXTURE_SIZE
-  ) {
-    ctx.drawImage(img, 0, 0, TEXTURE_SIZE, TEXTURE_SIZE);
-  } else {
-    const sx = (img.naturalWidth - TEXTURE_SIZE) / 2;
-    const sy = (img.naturalHeight - TEXTURE_SIZE) / 2;
+  const ctx = offscreen.getContext("2d");
+  if (!ctx) throw new Error("2D canvas context unavailable");
 
-    ctx.drawImage(
-      img,
-      sx,
-      sy,
-      TEXTURE_SIZE,
-      TEXTURE_SIZE,
-      0,
-      0,
-      TEXTURE_SIZE,
-      TEXTURE_SIZE,
-    );
-  }
+  ctx.drawImage(img, 0, 0, TEXTURE_SIZE, TEXTURE_SIZE);
 
   return ctx.getImageData(0, 0, TEXTURE_SIZE, TEXTURE_SIZE).data;
 }
