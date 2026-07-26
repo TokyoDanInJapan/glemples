@@ -36,8 +36,9 @@ import {
 import {
   computeWarpGrid,
   randomizeState,
-  WarpParams,
-  WarpState,
+  type WarpGridSize,
+  type WarpParams,
+  type WarpState,
 } from "./engine/warp.js";
 
 import { CrossfadeController } from "./app/crossfade.js";
@@ -52,6 +53,7 @@ import {
   DEFAULT_WARP_PARAMS,
   FADE_INTERVAL,
   INITIAL_MOTION_BLUR,
+  TEXTURE_SIZE,
 } from "./app/config.js";
 
 const canvas = document.getElementById("c") as HTMLCanvasElement;
@@ -75,7 +77,11 @@ function showFatalError(err: unknown): never {
 
 let renderer: Renderer;
 try {
-  renderer = new Renderer(canvas);
+  renderer = new Renderer(canvas, {
+    gridWidth: UV_CELLS_X,
+    gridHeight: UV_CELLS_Y,
+    textureSize: TEXTURE_SIZE,
+  });
 } catch (err) {
   showFatalError(err);
 }
@@ -125,6 +131,7 @@ let warpState: WarpState = randomizeState();
 // `warpState` when it finishes, so the warp field is never replaced in a single
 // frame (which read as a sudden jump).
 let warpStateNext: WarpState | null = null;
+const gridSize: WarpGridSize = { cols: UV_CELLS_X, rows: UV_CELLS_Y };
 const gridBuf: Float32Array = new Float32Array(UV_CELLS_X * UV_CELLS_Y * 2);
 // Scratch grid for the incoming warp state, blended into `gridBuf` by the fade.
 const gridBufNext: Float32Array = new Float32Array(UV_CELLS_X * UV_CELLS_Y * 2);
@@ -184,10 +191,17 @@ function frame(now: number): void {
   // end. The texture crossfade masks the morph.
   if (crossfade.fade > 0 && !warpStateNext) warpStateNext = randomizeState();
 
-  computeWarpGrid(animTime, params, warpState, warpRotation, gridBuf);
+  computeWarpGrid(animTime, params, warpState, warpRotation, gridSize, gridBuf);
 
   if (warpStateNext) {
-    computeWarpGrid(animTime, params, warpStateNext, warpRotation, gridBufNext);
+    computeWarpGrid(
+      animTime,
+      params,
+      warpStateNext,
+      warpRotation,
+      gridSize,
+      gridBufNext,
+    );
     const f = crossfade.fade;
     for (let i = 0; i < gridBuf.length; i++)
       gridBuf[i] += (gridBufNext[i] - gridBuf[i]) * f;

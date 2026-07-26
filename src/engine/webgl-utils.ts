@@ -34,7 +34,7 @@ export function createProgram(
   vert: string,
   frag: string,
 ): WebGLProgram {
-  const prog = gl.createProgram()!;
+  const prog = gl.createProgram();
   gl.attachShader(prog, compileShader(gl, gl.VERTEX_SHADER, vert));
   gl.attachShader(prog, compileShader(gl, gl.FRAGMENT_SHADER, frag));
   gl.linkProgram(prog);
@@ -87,7 +87,7 @@ export function makeTexture(
   // Annotated as number (not the inferred literal) so REPEAT can also be passed.
   wrap: number = gl.CLAMP_TO_EDGE,
 ): WebGLTexture {
-  const t = gl.createTexture()!;
+  const t = gl.createTexture();
   gl.bindTexture(gl.TEXTURE_2D, t);
   gl.texImage2D(
     gl.TEXTURE_2D,
@@ -124,7 +124,7 @@ export function makeFloatTexture(
   w: number,
   h: number,
 ): WebGLTexture {
-  const t = gl.createTexture()!;
+  const t = gl.createTexture();
   gl.bindTexture(gl.TEXTURE_2D, t);
   gl.texImage2D(
     gl.TEXTURE_2D,
@@ -155,7 +155,7 @@ export function makeFB(
   gl: WebGLRenderingContext,
   tex: WebGLTexture,
 ): WebGLFramebuffer {
-  const fb = gl.createFramebuffer()!;
+  const fb = gl.createFramebuffer();
   gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
   gl.framebufferTexture2D(
     gl.FRAMEBUFFER,
