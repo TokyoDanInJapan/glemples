@@ -113,7 +113,7 @@ describe("makeFloatTexture", () => {
 describe("makeFB", () => {
   it("attaches the texture as the colour attachment", () => {
     const gl = fakeGl();
-    const fb = makeFB(gl, { tag: "texture" } as unknown as WebGLTexture);
+    const fb = makeFB(gl, { tag: "texture" });
     expect(fb).toEqual({ tag: "fb" });
     expect(gl.framebufferTexture2D).toHaveBeenCalledWith(
       gl.FRAMEBUFFER,
@@ -129,7 +129,7 @@ describe("bindUnit", () => {
   it("activates the unit and points the sampler at it", () => {
     const gl = fakeGl();
     const loc = {} as WebGLUniformLocation;
-    bindUnit(gl, 3, { tag: "texture" } as unknown as WebGLTexture, loc);
+    bindUnit(gl, 3, { tag: "texture" }, loc);
     expect(gl.activeTexture).toHaveBeenCalledWith(gl.TEXTURE0 + 3);
     expect(gl.uniform1i).toHaveBeenCalledWith(loc, 3);
   });

@@ -20,5 +20,7 @@ jobs:
       - run: npm ci
       - run: npm run lint
       - run: npm run format:check
+      # Covers tests and config files too, which `include: [src]` alone misses.
+      - run: npm run typecheck
       - run: npm test
       - run: npm run build
