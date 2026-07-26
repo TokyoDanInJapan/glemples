@@ -43,8 +43,8 @@ import {
 import { CrossfadeController } from "./app/crossfade.js";
 import { bindUI } from "./app/ui.js";
 
-import tex01Url from "./assets/tex01.png";
-import tex02Url from "./assets/tex02.png";
+import tex01Url from "./assets/tex01.webp";
+import tex02Url from "./assets/tex02.webp";
 
 import {
   UV_CELLS_X,
