@@ -6,8 +6,8 @@ updates:
       interval: weekly
     open-pull-requests-limit: 10
     ignore:
-      # eslint-plugin-tsdoc's @typescript-eslint chain cannot resolve against
-      # TypeScript >= 6 yet; drop this rule once it can.
+      # typescript-eslint does not yet support TypeScript >= 6; drop this rule
+      # once it does.
       - dependency-name: typescript
         versions: [">=6"]
     groups:
