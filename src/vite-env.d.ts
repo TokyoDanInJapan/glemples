@@ -26,6 +26,6 @@ declare module "*.frag?raw" {
 }
 
 declare module "*.yaml" {
-  const data: Record<string, unknown>;
+  const data: unknown;
   export default data;
 }
