@@ -56,7 +56,7 @@ describe("TextureManager.swap", () => {
     const b = new Uint8ClampedArray([5, 6, 7, 8]);
     tm.pixels[0] = a;
     tm.pixels[1] = b;
-    tm.swap(0, 1);
+    tm.swap();
     expect(tm.pixels[0]).toBe(b);
     expect(tm.pixels[1]).toBe(a);
   });

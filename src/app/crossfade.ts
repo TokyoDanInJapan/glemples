@@ -55,7 +55,7 @@ export class CrossfadeController {
    * URL currently loaded into slots 0 and 1. Used to pick a *different* image
    * for the next crossfade so "next texture" never fades an image into itself.
    */
-  private slotUrl: (string | null)[] = [null, null];
+  private slotUrl: [string | null, string | null] = [null, null];
   private tex: TextureManager;
   private renderer: Renderer;
   private texLabel: HTMLElement;
@@ -101,7 +101,7 @@ export class CrossfadeController {
     this.fade = Math.min(this.fadeTime / FADE_DURATION, 1.0);
 
     if (this.fade >= 1.0) {
-      this.tex.swap(0, 1);
+      this.tex.swap();
       this.slotUrl[0] = this.slotUrl[1];
       this.renderer.uploadTexture(0, this.tex.pixels[0]!);
       this.texLabel.textContent = this.nextName;
@@ -184,7 +184,7 @@ export class CrossfadeController {
     const epoch = this.loadEpoch;
 
     try {
-      const { pixels, name } = await this.tex.decode(url, true);
+      const { pixels, name } = await this.tex.decode(url);
 
       if (epoch !== this.loadEpoch) return; // superseded by a drop
 
@@ -211,7 +211,7 @@ export class CrossfadeController {
     const epoch = this.loadEpoch;
 
     try {
-      const { pixels, name } = await this.tex.decode(url, true);
+      const { pixels, name } = await this.tex.decode(url);
 
       if (epoch !== this.loadEpoch) return; // superseded by a drop
 

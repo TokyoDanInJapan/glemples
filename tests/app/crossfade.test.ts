@@ -4,13 +4,16 @@ import { FADE_DURATION } from "../../src/app/config.js";
 import type { TextureManager } from "../../src/app/texture-manager.js";
 import type { Renderer } from "../../src/engine/renderer.js";
 
+/** What TextureManager.decode resolves to. */
+type DecodeResult = Awaited<ReturnType<TextureManager["decode"]>>;
+
 /** Flushes pending microtasks so in-flight decode() promises settle. */
 const flush = () => new Promise<void>((r) => setTimeout(r, 0));
 
 function makeFakes() {
-  const buf = new Uint8ClampedArray(4);
+  const buf: Uint8ClampedArray = new Uint8ClampedArray(4);
   const tex = {
-    pixels: [buf, buf] as (Uint8ClampedArray | null)[],
+    pixels: [buf, buf] as [Uint8ClampedArray | null, Uint8ClampedArray | null],
     getRandomUrl: vi.fn(() => "img.png"),
     decode: vi.fn(async (url: string) => ({ pixels: buf, name: url })),
     addFiles: vi.fn(() => ["dropped.png"]),
@@ -43,16 +46,13 @@ describe("CrossfadeController", () => {
 
   it("begins loading the next texture once the interval is reached", () => {
     f.controller.tick(1.0);
-    expect(f.tex.decode).toHaveBeenCalledWith("img.png", true);
+    expect(f.tex.decode).toHaveBeenCalledWith("img.png");
   });
 
   it("does not advance the fade until the incoming texture has loaded", async () => {
-    let resolveDecode!: (v: {
-      pixels: Uint8ClampedArray;
-      name: string;
-    }) => void;
+    let resolveDecode!: (v: DecodeResult) => void;
     f.tex.decode.mockImplementationOnce(
-      () => new Promise((r) => (resolveDecode = r)),
+      () => new Promise<DecodeResult>((r) => (resolveDecode = r)),
     );
 
     f.controller.tick(1.0); // reach interval, load starts
@@ -85,7 +85,7 @@ describe("CrossfadeController", () => {
     f.controller.tick(1.0);
     await flush();
     f.controller.tick(FADE_DURATION);
-    expect(f.tex.swap).toHaveBeenCalledWith(0, 1);
+    expect(f.tex.swap).toHaveBeenCalledOnce();
     expect(f.renderer.uploadTexture).toHaveBeenCalledWith(0, expect.anything());
     expect(f.onComplete).toHaveBeenCalledOnce();
     expect(f.controller.fade).toBe(0); // reset for the next cycle
@@ -124,19 +124,16 @@ describe("CrossfadeController", () => {
     await f.controller.dropFiles(files);
     expect(f.tex.addFiles).toHaveBeenCalledWith(files);
     // Loads the just-dropped file, not a random one from the pool.
-    expect(f.tex.decode).toHaveBeenCalledWith("dropped.png", true);
+    expect(f.tex.decode).toHaveBeenCalledWith("dropped.png");
     expect(f.tex.getRandomUrl).not.toHaveBeenCalled();
     expect(f.controller.fade).toBe(0);
     expect(f.label.textContent).toBe("dropped.png");
   });
 
   it("a drop mid-load discards the in-flight texture", async () => {
-    let resolveDecode!: (v: {
-      pixels: Uint8ClampedArray;
-      name: string;
-    }) => void;
+    let resolveDecode!: (v: DecodeResult) => void;
     f.tex.decode.mockImplementationOnce(
-      () => new Promise((r) => (resolveDecode = r)),
+      () => new Promise<DecodeResult>((r) => (resolveDecode = r)),
     );
 
     f.controller.tick(1.0); // slot-1 load starts (hangs)

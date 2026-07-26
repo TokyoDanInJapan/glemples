@@ -1,174 +1,259 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { bindUI } from "../../src/app/ui.js";
-import type { UIBindings } from "../../src/app/ui.js";
-import type { WarpParams } from "../../src/engine/warp.js";
+// @vitest-environment jsdom
+
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { bindUI, type UIElements } from "../../src/app/ui.js";
+import { createAppState, type AppState } from "../../src/app/state.js";
 import type { CrossfadeController } from "../../src/app/crossfade.js";
 
 /**
- * Installs a minimal fake `document` that records the handlers `bindUI`
- * registers and hands back reusable fake elements for `getElementById`.
+ * Builds the real DOM subtree `bindUI` expects, mirroring index.html, and
+ * returns the element map alongside it.
  */
-function installFakeDocument() {
-  const docHandlers: Record<string, EventListener> = {};
-  const elements: Record<string, { value: string; textContent: string }> = {};
+function mountDom(): UIElements {
+  document.body.innerHTML = `
+    <button id="btnToggleUi" aria-expanded="false">☰</button>
+    <div id="ui">
+      <input type="range" id="blur" />
+      <input type="range" id="warp" />
+      <input type="range" id="zoom" />
+      <input type="range" id="speed" />
+      <input type="range" id="texint" />
+      <button id="btnNextTex"></button>
+      <button id="btnPause"></button>
+      <button id="btnFullscreen"></button>
+    </div>
+  `;
+  document.body.className = "";
 
-  const getElement = (id: string) => {
-    elements[id] ??= { value: "0", textContent: "", addEventListener: vi.fn() };
-    return elements[id];
+  const byId = <T extends HTMLElement>(id: string) =>
+    document.getElementById(id) as T;
+
+  return {
+    blur: byId<HTMLInputElement>("blur"),
+    warp: byId<HTMLInputElement>("warp"),
+    zoom: byId<HTMLInputElement>("zoom"),
+    speed: byId<HTMLInputElement>("speed"),
+    texint: byId<HTMLInputElement>("texint"),
+    nextTex: byId<HTMLButtonElement>("btnNextTex"),
+    pause: byId<HTMLButtonElement>("btnPause"),
+    fullscreen: byId<HTMLButtonElement>("btnFullscreen"),
+    toggle: byId<HTMLButtonElement>("btnToggleUi"),
   };
-
-  const doc = {
-    addEventListener: vi.fn((type: string, handler: EventListener) => {
-      docHandlers[type] = handler;
-    }),
-    getElementById: vi.fn(getElement),
-    fullscreenElement: null,
-    documentElement: { requestFullscreen: vi.fn() },
-    exitFullscreen: vi.fn(),
-    body: { classList: { add: vi.fn(), remove: vi.fn() } },
-  };
-
-  vi.stubGlobal("document", doc);
-  return { docHandlers, elements };
 }
 
-function makeBindings(): { ui: UIBindings; params: WarpParams } {
-  const params = {
-    masterZoom: 1,
-    warpFactor: 0,
-    speedScale: 1,
-  } as WarpParams;
-  const ui: UIBindings = {
-    params,
-    motionBlur: { value: 0 },
-    paused: { value: false },
-    crossfade: {
-      interval: 1,
-      trigger: vi.fn(),
-    } as unknown as CrossfadeController,
-    pauseBtn: {
-      textContent: "",
-      addEventListener: vi.fn(),
-    } as unknown as HTMLButtonElement,
-  };
-  return { ui, params };
+function makeCrossfade() {
+  return {
+    interval: 20,
+    trigger: vi.fn(),
+    dropFiles: vi.fn(),
+  } as unknown as CrossfadeController & { trigger: ReturnType<typeof vi.fn> };
 }
 
-describe("bindUI wheel zoom", () => {
-  let env: ReturnType<typeof installFakeDocument>;
-  let params: WarpParams;
+let els: UIElements;
+let state: AppState;
+let crossfade: ReturnType<typeof makeCrossfade>;
 
-  beforeEach(() => {
-    env = installFakeDocument();
-    const b = makeBindings();
-    params = b.params;
-    bindUI(b.ui);
+function setup(mutate: (s: AppState) => void = () => {}) {
+  // A fresh document per test: bindUI attaches document-level listeners that
+  // would otherwise stack across cases.
+  document.body.innerHTML = "";
+  els = mountDom();
+  state = createAppState();
+  crossfade = makeCrossfade();
+  mutate(state);
+  bindUI(state, crossfade, els);
+}
+
+/** Dispatches a cancelable wheel event and reports whether it was prevented. */
+function wheel(deltaY: number, target: EventTarget = document.body): boolean {
+  const e = new WheelEvent("wheel", {
+    deltaY,
+    bubbles: true,
+    cancelable: true,
+  });
+  target.dispatchEvent(e);
+  return e.defaultPrevented;
+}
+
+function key(k: string, target: EventTarget = document.body): void {
+  target.dispatchEvent(
+    new KeyboardEvent("keydown", { key: k, bubbles: true, cancelable: true }),
+  );
+}
+
+describe("bindUI slider setup", () => {
+  beforeEach(() => setup());
+
+  it("applies each slider's range from the table, not the markup", () => {
+    expect([els.blur.min, els.blur.max, els.blur.step]).toEqual([
+      "0",
+      "10",
+      "1",
+    ]);
+    expect([els.zoom.min, els.zoom.max]).toEqual(["1", "300"]);
+    expect([els.texint.min, els.texint.max, els.texint.step]).toEqual([
+      "5",
+      "120",
+      "5",
+    ]);
   });
 
-  afterEach(() => {
-    vi.unstubAllGlobals();
+  it("positions each slider from the live state at startup", () => {
+    setup((s) => {
+      s.params.masterZoom = 1.5;
+      s.params.warpFactor = 0.15;
+      s.params.speedScale = 10;
+    });
+    expect(els.zoom.value).toBe("150");
+    expect(els.warp.value).toBe("20"); // 0.15 / 0.0075
+    expect(els.speed.value).toBe("100");
+    expect(els.texint.value).toBe("20");
   });
 
-  function wheel(deltaY: number) {
-    const preventDefault = vi.fn();
-    env.docHandlers.wheel({ deltaY, preventDefault } as unknown as Event);
-    return preventDefault;
-  }
-
-  it("registers a non-passive wheel listener so it can preventDefault", () => {
-    expect(document.addEventListener).toHaveBeenCalledWith(
-      "wheel",
-      expect.any(Function),
-      { passive: false },
-    );
+  it("writes state when a slider is dragged", () => {
+    els.warp.value = "40";
+    els.warp.dispatchEvent(new Event("input"));
+    expect(state.params.warpFactor).toBeCloseTo(0.3);
   });
+
+  it("round-trips every slider through its value mapping", () => {
+    // toSlider must be the exact inverse of toValue, or the knob and the value
+    // drift apart the first time either is used.
+    for (const el of [els.blur, els.warp, els.zoom, els.speed, els.texint]) {
+      const mid = String(
+        Math.round((Number(el.min) + Number(el.max)) / 2 / Number(el.step)) *
+          Number(el.step),
+      );
+      el.value = mid;
+      el.dispatchEvent(new Event("input"));
+
+      // Re-binding re-derives the position from the value it just wrote.
+      const before = el.value;
+      bindUI(state, crossfade, els);
+      expect(el.value).toBe(before);
+    }
+  });
+});
+
+describe("bindUI zoom", () => {
+  beforeEach(() => setup());
 
   it("scrolling up zooms in and prevents the page from scrolling", () => {
-    const preventDefault = wheel(-100);
-    expect(params.masterZoom).toBeCloseTo(1.1);
-    expect(preventDefault).toHaveBeenCalledOnce();
+    expect(wheel(-100)).toBe(true);
+    expect(state.params.masterZoom).toBeCloseTo(1.1);
   });
 
   it("scrolling down zooms out", () => {
     wheel(100);
-    expect(params.masterZoom).toBeCloseTo(1 / 1.1);
+    expect(state.params.masterZoom).toBeCloseTo(1 / 1.1);
   });
 
   it("syncs the zoom slider to the new zoom (× 100)", () => {
     wheel(-100);
-    expect(env.elements.zoom.value).toBe("110");
+    expect(els.zoom.value).toBe("110");
   });
 
   it("clamps zoom at the upper bound when scrolling up repeatedly", () => {
     for (let i = 0; i < 100; i++) wheel(-100);
-    expect(params.masterZoom).toBe(3);
+    expect(state.params.masterZoom).toBe(3);
   });
 
   it("clamps zoom at the lower bound when scrolling down repeatedly", () => {
     for (let i = 0; i < 100; i++) wheel(100);
-    expect(params.masterZoom).toBe(0.01);
+    expect(state.params.masterZoom).toBe(0.01);
   });
 
   it("the + and - keys reuse the same clamped zoom step", () => {
-    env.docHandlers.keydown({ key: "+" } as KeyboardEvent);
-    expect(params.masterZoom).toBeCloseTo(1.1);
-    env.docHandlers.keydown({ key: "-" } as KeyboardEvent);
-    expect(params.masterZoom).toBeCloseTo(1);
+    key("+");
+    expect(state.params.masterZoom).toBeCloseTo(1.1);
+    key("-");
+    expect(state.params.masterZoom).toBeCloseTo(1);
   });
 
   it("ignores wheel events originating inside the control panel", () => {
-    const preventDefault = vi.fn();
-    env.docHandlers.wheel({
-      deltaY: -100,
-      preventDefault,
-      target: { closest: (sel: string) => (sel === "#ui" ? {} : null) },
-    } as unknown as Event);
-    expect(params.masterZoom).toBe(1);
-    expect(preventDefault).not.toHaveBeenCalled();
+    const prevented = wheel(-100, els.zoom);
+    expect(state.params.masterZoom).toBe(1);
+    expect(prevented).toBe(false);
   });
 });
 
-describe("bindUI slider initialisation", () => {
-  afterEach(() => {
-    vi.unstubAllGlobals();
+describe("bindUI motion blur keys", () => {
+  beforeEach(() => setup());
+
+  it("steps the blur slider by whole notches and keeps the value in sync", () => {
+    const start = Number(els.blur.value);
+    key("ArrowUp");
+    expect(Number(els.blur.value)).toBe(start + 1);
+
+    // The knob must still describe the value: re-deriving the position from
+    // state has to land on the same notch.
+    const shown = els.blur.value;
+    bindUI(state, crossfade, els);
+    expect(els.blur.value).toBe(shown);
   });
 
-  it("positions each slider from the live state at startup", () => {
-    const env = installFakeDocument();
-    const b = makeBindings();
-    b.params.masterZoom = 1.5;
-    b.params.warpFactor = 0.15;
-    b.params.speedScale = 10;
-    b.ui.crossfade.interval = 30;
-    bindUI(b.ui);
-    expect(env.elements.zoom.value).toBe("150");
-    expect(env.elements.warp.value).toBe("20"); // 0.15 / (0.01 * 0.75)
-    expect(env.elements.speed.value).toBe("100");
-    expect(env.elements.texint.value).toBe("30");
+  it("clamps at both ends of the slider", () => {
+    for (let i = 0; i < 50; i++) key("ArrowUp");
+    expect(els.blur.value).toBe("10");
+    expect(state.motionBlur).toBeCloseTo(0.97);
+
+    for (let i = 0; i < 50; i++) key("ArrowDown");
+    expect(els.blur.value).toBe("0");
+    expect(state.motionBlur).toBe(0);
   });
 });
 
-describe("bindUI Space key", () => {
-  afterEach(() => {
-    vi.unstubAllGlobals();
+describe("bindUI buttons and keys", () => {
+  beforeEach(() => setup());
+
+  it("Space triggers a crossfade, except while a button is focused", () => {
+    key(" ", els.pause);
+    expect(crossfade.trigger).not.toHaveBeenCalled();
+
+    key(" ");
+    expect(crossfade.trigger).toHaveBeenCalledOnce();
   });
 
-  it("does not trigger a crossfade when a button is focused", () => {
-    const env = installFakeDocument();
-    const b = makeBindings();
-    bindUI(b.ui);
-    env.docHandlers.keydown({
-      key: " ",
-      target: { tagName: "BUTTON" },
-      preventDefault: vi.fn(),
-    } as unknown as KeyboardEvent);
-    expect(b.ui.crossfade.trigger).not.toHaveBeenCalled();
+  it("pause toggles state and relabels the button, by click or by key", () => {
+    els.pause.click();
+    expect(state.paused).toBe(true);
+    expect(els.pause.textContent).toBe("Resume (P)");
 
-    env.docHandlers.keydown({
-      key: " ",
-      target: { tagName: "BODY" },
-      preventDefault: vi.fn(),
-    } as unknown as KeyboardEvent);
-    expect(b.ui.crossfade.trigger).toHaveBeenCalledOnce();
+    key("p");
+    expect(state.paused).toBe(false);
+    expect(els.pause.textContent).toBe("Pause (P)");
+  });
+
+  it("the next-texture button triggers a crossfade", () => {
+    els.nextTex.click();
+    expect(crossfade.trigger).toHaveBeenCalledOnce();
+  });
+
+  it("the toggle button opens the panel on devices without hover", () => {
+    expect(document.body.classList.contains("ui-open")).toBe(false);
+
+    els.toggle.click();
+    expect(document.body.classList.contains("ui-open")).toBe(true);
+    expect(els.toggle.getAttribute("aria-expanded")).toBe("true");
+
+    els.toggle.click();
+    expect(document.body.classList.contains("ui-open")).toBe(false);
+    expect(els.toggle.getAttribute("aria-expanded")).toBe("false");
+  });
+});
+
+describe("bindUI drag and drop", () => {
+  beforeEach(() => setup());
+
+  it("marks the body while dragging and clears it on leave", () => {
+    document.dispatchEvent(
+      new Event("dragover", { bubbles: true, cancelable: true }),
+    );
+    expect(document.body.classList.contains("dragging")).toBe(true);
+
+    const leave = new Event("dragleave", { bubbles: true });
+    Object.defineProperty(leave, "relatedTarget", { value: null });
+    document.dispatchEvent(leave);
+    expect(document.body.classList.contains("dragging")).toBe(false);
   });
 });
