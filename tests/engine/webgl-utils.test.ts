@@ -7,8 +7,9 @@ import {
   bindUnit,
 } from "../../src/engine/webgl-utils.js";
 
-// A minimal fake WebGL context: real numeric enums aren't needed, only that the
-// helpers thread the right objects/arguments through the expected calls.
+// A minimal fake WebGL context. The tests do not need real numeric enums. They
+// only check that the helpers thread the right objects and arguments through the
+// expected calls.
 function fakeGl(overrides: Partial<Record<string, unknown>> = {}) {
   const gl = {
     VERTEX_SHADER: 1,

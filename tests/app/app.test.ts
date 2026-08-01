@@ -5,7 +5,7 @@ import { createApp, type AppElements } from "../../src/app/app.js";
 
 /**
  * Minimal WebGL stand-in. The renderer's own behaviour is covered in
- * tests/engine/renderer.test.ts; here it only has to not throw.
+ * tests/engine/renderer.test.ts. Here it only has to not throw.
  */
 function fakeGl(): Record<string, unknown> {
   const obj = () => ({});
@@ -26,7 +26,7 @@ function fakeGl(): Record<string, unknown> {
     drawingBufferHeight: 600,
   };
 
-  // Everything else is a no-op GL command; enums read back as numbers. The
+  // Everything else is a no-op GL command, and enums read back as numbers. The
   // Proxy wraps a mutable target so a test can make `getExtension` start
   // failing on the context the renderer already holds.
   return new Proxy(target, {
@@ -215,7 +215,7 @@ describe("createApp", () => {
     els.controls.pause.click();
     expect(els.controls.pause.textContent).toBe("Resume (P)");
 
-    // Frames keep being scheduled; only time advancement stops.
+    // Frames keep being scheduled. Only time advancement stops.
     const before = rafCallbacks.length;
     runFrames(10);
     expect(rafCallbacks.length).toBeGreaterThan(before);

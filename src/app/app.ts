@@ -45,7 +45,7 @@ export interface App {
 /** How long to average frame times over before updating the FPS readout. */
 const FPS_SAMPLE_SECONDS = 1.0;
 
-/** Largest frame delta to trust, in seconds; clamps stalls and tab restores. */
+/** Largest frame delta to trust, in seconds. Clamps stalls and tab restores. */
 const MAX_FRAME_DELTA = 0.1;
 
 /**
@@ -54,7 +54,7 @@ const MAX_FRAME_DELTA = 0.1;
  *
  * @param els - The DOM elements to drive.
  * @param textureUrls - Bundled texture URLs to seed the rotation pool with.
- * @returns The assembled {@link App}; call {@link App.start} to run it.
+ * @returns The assembled {@link App}. Call {@link App.start} to run it.
  * @throws If WebGL or `OES_texture_float` is unavailable.
  */
 export function createApp(els: AppElements, textureUrls: string[]): App {
@@ -70,7 +70,7 @@ export function createApp(els: AppElements, textureUrls: string[]): App {
   const animator = new WarpAnimator({ cols: UV_CELLS_X, rows: UV_CELLS_Y });
   const tex = new TextureManager();
 
-  // An instant placeholder so the first frame has something to warp; the
+  // An instant placeholder so the first frame has something to warp. The
   // bundled textures replace it as soon as they decode.
   const fallback = makeProceduralTexture();
   tex.pixels[0] = fallback;
@@ -89,7 +89,7 @@ export function createApp(els: AppElements, textureUrls: string[]): App {
   bindUI(state, crossfade, els.controls);
   void crossfade.showUrls(textureUrls);
 
-  // GPUs routinely evict long-running tabs; keep the loop alive through a
+  // GPUs routinely evict long-running tabs. Keep the loop alive through a
   // context loss and rebuild everything when the browser restores it.
   let contextLost = false;
   let resizePending = false;

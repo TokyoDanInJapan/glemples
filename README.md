@@ -1,6 +1,7 @@
 # GLemples
 
-A real-time, WebGL image-warping visualiser - a browser port of the classic [Drempels](https://www.geisswerks.com/about_drempels.html) / Geiss warp.
+A real-time, WebGL image-warping visualiser — a browser port of the classic
+[Drempels](https://www.geisswerks.com/about_drempels.html) / Geiss warp.
 
 - [Preview](https://glemples.vercel.app/)
 
@@ -11,13 +12,19 @@ npm install
 npm run dev
 ```
 
-Open the printed local URL, then **drop image files onto the window** to warp them. Until you do, a procedural plasma texture plays as a fallback.
+Open the printed local URL, then **drop image files onto the window** to warp
+them. Until you do, a procedural plasma texture plays as a fallback.
 
 ## How it works
 
-Each frame the CPU computes a coarse grid (`UV_CELLS_X × UV_CELLS_Y`) of texture coordinates by blending seven independent warp **modes** - swirl, tunnel, zoom, rotation, and more - weighted by slowly cycling sinusoids.
+Each frame the CPU computes a coarse grid (`UV_CELLS_X × UV_CELLS_Y`) of texture
+coordinates. It blends seven independent warp **modes** — swirl, tunnel, zoom,
+rotation and more — weighted by slowly cycling sinusoids.
 
-That grid is uploaded to the GPU, where a fragment shader samples the source image through it using **bicubic (Catmull-Rom) interpolation** for a smooth, seam-free warp. A second pass blends each frame with the previous one to produce motion-blur trails.
+The app uploads that grid to the GPU. A fragment shader then samples the source
+image through the grid with **bicubic (Catmull-Rom) interpolation**, which gives
+a smooth, seam-free warp. A second pass blends each frame with the previous one
+to produce motion-blur trails.
 
 ```
 computeWarpGrid (CPU)  ──►  warp grid texture  ──►  warp pass (GPU)  ──►  blit to canvas
@@ -28,17 +35,18 @@ computeWarpGrid (CPU)  ──►  warp grid texture  ──►  warp pass (GPU) 
 ## Controls
 
 The control panel appears when you move the pointer over the window. Touch
-devices never hover, so there the **☰** button in the top-right reveals it.
+devices never hover, so on those the **☰** button in the top right opens the
+panel.
 
-| Control       | Effect                                       |
-| ------------- | -------------------------------------------- |
-| Motion blur   | Strength of the frame-to-frame trails        |
-| Warp amount   | Displacement strength of the primary warp    |
-| Zoom          | Overall zoom in/out                          |
-| Speed         | Animation speed                              |
-| Tex interval  | Seconds between automatic texture crossfades |
-| Scroll wheel  | Zoom in / out                                |
-| Drag-and-drop | Drop image files to load and warp them       |
+| Control          | Effect                                       |
+| ---------------- | -------------------------------------------- |
+| Motion blur      | Strength of the frame-to-frame trails        |
+| Warp amount      | Displacement strength of the primary warp    |
+| Zoom             | Overall zoom in / out                        |
+| Speed            | Animation speed                              |
+| Texture interval | Seconds between automatic texture crossfades |
+| Scroll wheel     | Zoom in / out                                |
+| Drag-and-drop    | Drop image files to load and warp them       |
 
 ### Keyboard shortcuts
 
@@ -52,11 +60,13 @@ devices never hover, so there the **☰** button in the top-right reveals it.
 
 ## Configuration
 
-Default parameters live in [`src/config.yaml`](src/config.yaml) and are loaded at build time. Edit values there - grid resolution, texture size, crossfade timing,
-initial warp settings - and the dev server hot-reloads them.
+Default parameters live in [`src/config.yaml`](src/config.yaml) and are loaded at
+build time. Edit values there — grid resolution, texture size, crossfade timing,
+starting warp settings — and the dev server hot-reloads them.
 
-Every value is range-checked as it loads, so a typo fails at startup with the
-offending key named rather than propagating through the warp field as `NaN`.
+The app range-checks every value as it loads. A typo therefore fails at startup
+and names the offending key, instead of propagating through the warp field as
+`NaN`.
 
 ## Project structure
 
@@ -109,9 +119,9 @@ self-contained zip:
 releases/glemples-<version>.zip
 ```
 
-The version is read from `package.json`. The archive contains the built page at
-its root (`index.html` plus assets), so it can be unzipped and served — or
-opened directly — as a standalone release.
+The version comes from `package.json`. The archive holds the built page at its
+root (`index.html` plus assets), so you can unzip it and serve it — or open it
+directly — as a standalone release.
 
 ## Requirements
 
@@ -123,10 +133,10 @@ desktop and mobile browsers qualify).
 GLemples is a WebGL port of **Drempels** by **Ryan Geiss**. See
 [CREDITS.md](CREDITS.md) for full attribution.
 
-## License
+## Licence
 
-Licensed under the **GNU General Public License v3.0 or later** (GPL-3.0-or-later).
-See [LICENSE](LICENSE) for the full text.
+Licensed under the **GNU General Public License v3.0 or later**
+(GPL-3.0-or-later). See [LICENSE](LICENSE) for the full text.
 
 Source files carry an [SPDX](https://spdx.dev/) short-form identifier
 (`SPDX-License-Identifier: GPL-3.0-or-later`) rather than the full notice.

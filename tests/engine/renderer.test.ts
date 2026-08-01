@@ -5,8 +5,8 @@ const OPTS = { gridWidth: 8, gridHeight: 6, textureSize: 64 };
 
 /**
  * A fake WebGL context that records calls. Enum values are distinct integers so
- * assertions can tell one binding target or format from another; the real
- * numeric values don't matter.
+ * assertions can tell one binding target or format from another. The real
+ * numeric values do not matter.
  */
 function fakeGl() {
   let nextId = 0;
@@ -216,7 +216,7 @@ describe("Renderer.render", () => {
   });
 
   it("never samples the framebuffer it is drawing into", () => {
-    // Reading and writing one attachment in the same pass is undefined; the
+    // Reading and writing one attachment in the same pass is undefined. The
     // ping-pong exists precisely to avoid it. The blit pass may sample that
     // attachment afterwards, so only the warp pass is in scope here.
     // Ignore the binds made while building resources in init().

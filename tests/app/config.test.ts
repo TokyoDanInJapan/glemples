@@ -106,7 +106,7 @@ describe("config validation", () => {
   });
 
   it("rejects a grid too small to interpolate across", async () => {
-    // cols - 1 is a divisor in computeWarpGrid; 1 column divides by zero.
+    // cols - 1 is a divisor in computeWarpGrid, so 1 column divides by zero.
     await expect(loadWith({ ...VALID, uv_cells_x: 1 })).rejects.toThrow(
       /"uv_cells_x" must be >= 2/,
     );

@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
-  randomizeState,
+  randomiseState,
   computeWarpGrid,
   type WarpParams,
   type WarpState,
@@ -20,16 +20,16 @@ const PARAMS: WarpParams = {
 
 const GRID_LEN = SIZE.cols * SIZE.rows * 2;
 
-describe("randomizeState", () => {
+describe("randomiseState", () => {
   it("produces four oscillators and four phase seeds", () => {
-    const s = randomizeState();
+    const s = randomiseState();
     expect(s.randStart).toHaveLength(4);
     expect(s.oscillators).toHaveLength(4);
   });
 
   it("keeps each random value within its documented magnitude range", () => {
     for (let n = 0; n < 50; n++) {
-      const s = randomizeState();
+      const s = randomiseState();
       for (const seed of s.randStart) {
         expect(seed).toBeGreaterThanOrEqual(0);
         expect(seed).toBeLessThanOrEqual(Math.PI * 2);
@@ -48,14 +48,14 @@ describe("randomizeState", () => {
   });
 
   it("defaults modeSwitchSpeedMultiplier to 1 and respects an override", () => {
-    expect(randomizeState().modeSwitchSpeedMultiplier).toBe(1);
-    expect(randomizeState(2.5).modeSwitchSpeedMultiplier).toBe(2.5);
+    expect(randomiseState().modeSwitchSpeedMultiplier).toBe(1);
+    expect(randomiseState(2.5).modeSwitchSpeedMultiplier).toBe(2.5);
   });
 
   it("eventually yields both rotation signs", () => {
     const signs = new Set<number>();
     for (let n = 0; n < 100; n++)
-      signs.add(Math.sign(randomizeState().rotationalSpeed));
+      signs.add(Math.sign(randomiseState().rotationalSpeed));
     expect(signs).toEqual(new Set([1, -1]));
   });
 });

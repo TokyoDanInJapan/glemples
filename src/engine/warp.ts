@@ -7,7 +7,7 @@
  * Computes the per-frame UV warp grid.
  *
  * @remarks
- * Each frame, seven independent "warp modes" (swirl, tunnel, zoom, etc.) are
+ * Each frame, seven independent 'warp modes' (swirl, tunnel, zoom and more) are
  * evaluated per grid cell and blended by time-varying weights. The result is a
  * grid of texture coordinates the fragment shader samples through. This is a
  * port of the classic Drempels / Geiss warp.
@@ -59,7 +59,7 @@ interface WarpOscillator {
 
 /**
  * Per-animation random seed, re-rolled on each texture change so successive
- * clips look distinct. See {@link randomizeState}.
+ * clips look distinct. See {@link randomiseState}.
  */
 export interface WarpState {
   /** Four random phase seeds reused across modes. */
@@ -117,7 +117,7 @@ interface FrameContext {
  * @param modeSwitchSpeedMultiplier - Scales how quickly mode weights cycle.
  * @returns A newly seeded warp state.
  */
-export function randomizeState(modeSwitchSpeedMultiplier = 1.0): WarpState {
+export function randomiseState(modeSwitchSpeedMultiplier = 1.0): WarpState {
   const rand = () => Math.random();
   const sign = () => (rand() < 0.5 ? 1 : -1);
 
@@ -164,8 +164,9 @@ export type ModeWeights = [
  * Computes the seven normalised mode-blend weights for the current time.
  *
  * @remarks
- * Each weight is a sinusoid raised to a power; the set is L2-normalised, sharpened
- * by `focusExp`, biased towards mode 0, then re-normalised so one mode dominates.
+ * Each weight is a sinusoid raised to a power. The set is then L2-normalised,
+ * sharpened by `focusExp`, biased towards mode 0, and re-normalised so one mode
+ * dominates.
  *
  * @param animTime - Current animation time.
  * @param state - Warp state providing the random phase seeds.
@@ -271,7 +272,7 @@ function modeDrempels(
 }
 
 /**
- * Mode 1 — "stomach": gentle polar churn from low-frequency radius/angle waves.
+ * Mode 1 — 'stomach': gentle polar churn from low-frequency radius/angle waves.
  *
  * @param bua - Aspect-corrected base U.
  * @param bv - Base V.
@@ -294,7 +295,7 @@ function modeStomach(
 }
 
 /**
- * Mode 2 — "crazy": the same polar churn as {@link modeStomach} but with much
+ * Mode 2 — 'crazy': the same polar churn as {@link modeStomach} but with much
  * higher spatial/temporal frequencies, giving a frenetic ripple.
  *
  * @param bua - Aspect-corrected base U.
@@ -319,7 +320,7 @@ function modeCrazy(
 }
 
 /**
- * Mode 3 — "rotation": rigid rotation about a slowly wandering centre.
+ * Mode 3 — 'rotation': rigid rotation about a slowly wandering centre.
  *
  * @param bua - Aspect-corrected base U.
  * @param bv - Base V.
@@ -340,7 +341,7 @@ function modeRotation(
 }
 
 /**
- * Mode 4 — "zoom out + minor rotate": pulsing zoom about a wandering centre
+ * Mode 4 — 'zoom out + minor rotate': pulsing zoom about a wandering centre
  * combined with a small rotation.
  *
  * @param bua - Aspect-corrected base U.
@@ -364,7 +365,7 @@ function modeZoomRotate(
 }
 
 /**
- * Mode 5 — "swirlies": fine, high-frequency sinusoidal jitter layered in two
+ * Mode 5 — 'swirlies': fine, high-frequency sinusoidal jitter layered in two
  * passes for a shimmering, turbulent texture.
  *
  * @param bua - Aspect-corrected base U.
@@ -416,7 +417,7 @@ function modeSwirlies(
 }
 
 /**
- * Mode 6 — "tunnel": maps to polar space so the texture appears to recede down
+ * Mode 6 — 'tunnel': maps to polar space so the texture appears to recede down
  * an infinite tunnel.
  *
  * @param bua - Aspect-corrected base U.
