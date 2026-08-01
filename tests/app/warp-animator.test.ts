@@ -86,7 +86,7 @@ describe("WarpAnimator", () => {
   });
 
   it("blends towards the incoming field as the fade advances", () => {
-    // At fade 0 the field is purely the outgoing state; by fade 1 it must have
+    // At fade 0 the field is purely the outgoing state. By fade 1 it must have
     // fully reached the incoming one, so promoting at that point is invisible.
     const a = new WarpAnimator(SIZE, fixedState());
 

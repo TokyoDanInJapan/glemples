@@ -63,8 +63,8 @@ function compileShader(
  * @param w - Texture width in pixels.
  * @param h - Texture height in pixels.
  * @param data - Initial RGBA pixel data, or `null` to allocate uninitialised storage.
- * @param filter - Min/mag filter, e.g. `gl.LINEAR` or `gl.NEAREST`.
- * @param wrap - Wrap mode for both axes; defaults to `gl.CLAMP_TO_EDGE`.
+ * @param filter - Min/mag filter, for example `gl.LINEAR` or `gl.NEAREST`.
+ * @param wrap - Wrap mode for both axes. Defaults to `gl.CLAMP_TO_EDGE`.
  * @returns The created {@link WebGLTexture}.
  */
 export function makeTexture(
@@ -161,7 +161,7 @@ export function makeFB(
  * Binds a texture to a numbered texture unit and points a sampler uniform at it.
  *
  * @param gl - The WebGL rendering context.
- * @param unit - Texture unit index (0 maps to `gl.TEXTURE0`, etc.).
+ * @param unit - Texture unit index (0 maps to `gl.TEXTURE0`, and so on).
  * @param tex - Texture to bind.
  * @param loc - Sampler uniform location to set to `unit`.
  */

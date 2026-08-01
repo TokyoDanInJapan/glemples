@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
- * Loads source images and maintains the CPU-side RGBA pixel buffers ("slots")
+ * Loads source images and maintains the CPU-side RGBA pixel buffers ('slots')
  * that get uploaded to the GPU.
  *
  * @remarks
@@ -70,8 +70,9 @@ export class TextureManager {
   /**
    * Picks a random registered image URL.
    *
-   * @param exclude - A URL to avoid returning (e.g. the image already on screen)
-   *   so consecutive picks differ. Ignored if it is the only registered image.
+   * @param exclude - A URL to avoid returning, for example the image already on
+   *   screen, so consecutive picks differ. Ignored if it is the only registered
+   *   image.
    * @returns A URL, or `null` if no images are registered.
    */
   getRandomUrl(exclude?: string): string | null {
@@ -92,7 +93,8 @@ export class TextureManager {
    *
    * @remarks
    * Decoding is kept separate from slot assignment so callers can discard a
-   * stale result (e.g. one superseded by a fresh drop) before it clobbers a slot.
+   * stale result before it clobbers a slot, for example one superseded by a
+   * fresh drop.
    *
    * @param url - Image URL to load.
    * @returns The decoded pixels and the image's display name (final path segment).

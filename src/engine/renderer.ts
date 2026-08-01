@@ -19,9 +19,9 @@ import {
 
 /** Fixed dimensions the renderer allocates its GL resources against. */
 export interface RendererOptions {
-  /** Warp-grid columns; must match the grid the caller computes. */
+  /** Warp-grid columns. Must match the grid the caller computes. */
   gridWidth: number;
-  /** Warp-grid rows; must match the grid the caller computes. */
+  /** Warp-grid rows. Must match the grid the caller computes. */
   gridHeight: number;
   /** Edge length of each square source texture. Power-of-two for `REPEAT` wrap. */
   textureSize: number;
@@ -31,11 +31,11 @@ export interface RendererOptions {
  * Two-pass WebGL renderer for the warp effect.
  *
  * @remarks
- * Each frame runs a **warp pass** that samples the source textures through the
- * warp grid and blends with the previous frame for motion blur (rendered into a
- * ping-pong framebuffer), followed by a **blit pass** that copies the result to
- * the canvas. The framebuffers are then swapped so this frame becomes next
- * frame's motion-blur source.
+ * Each frame runs a **warp pass** and then a **blit pass**. The warp pass
+ * samples the source textures through the warp grid, blends the result with the
+ * previous frame for motion blur, and renders into a ping-pong framebuffer. The
+ * blit pass copies that framebuffer to the canvas. The two framebuffers are then
+ * swapped, so this frame becomes the next frame's motion-blur source.
  *
  * Grid and texture dimensions are supplied by the caller so this module stays
  * independent of application configuration.
@@ -88,14 +88,14 @@ export class Renderer {
 
   /**
    * Recreates every GL resource on the (restored) context. Call after a
-   * `webglcontextrestored` event; the caller must then re-upload the source
+   * `webglcontextrestored` event. The caller must then re-upload the source
    * textures and re-apply the canvas size.
    */
   restore(): void {
     this.init();
   }
 
-  /** Builds all GL resources; shared by construction and context restore. */
+  /** Builds all GL resources. Shared by construction and context restore. */
   private init(): void {
     const gl = this.gl;
     const canvas = this.canvas;

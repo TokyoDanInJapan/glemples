@@ -14,9 +14,10 @@ import type { TextureManager } from "./texture-manager.js";
 import type { Renderer } from "../engine/renderer.js";
 
 /**
- * Owns the texture-crossfade state machine: it holds a texture, then loads the
- * next one, fades between them over {@link FADE_DURATION} seconds, and promotes
- * the result — repeating on the configured interval.
+ * Owns the texture-crossfade state machine. It holds a texture, then loads the
+ * next one and fades between them over {@link FADE_DURATION} seconds. The
+ * incoming texture is then promoted and the cycle repeats on the configured
+ * interval.
  */
 export class CrossfadeController {
   /** Current blend factor read by the render loop (0 = slot 0, 1 = slot 1). */
@@ -35,14 +36,14 @@ export class CrossfadeController {
   /** Display name of the incoming image, applied to the label at the swap. */
   private nextName = "";
   /**
-   * Bumped whenever a drop restarts playback. Async loads capture the epoch when
-   * they start and discard their result if it no longer matches, so an in-flight
-   * load from the tick loop can never clobber a freshly dropped image.
+   * Incremented whenever a drop restarts playback. Async loads capture the epoch
+   * when they start and discard their result if it no longer matches, so an
+   * in-flight load from the tick loop can never clobber a freshly dropped image.
    */
   private loadEpoch = 0;
   /**
    * URL currently loaded into slots 0 and 1. Used to pick a *different* image
-   * for the next crossfade so "next texture" never fades an image into itself.
+   * for the next crossfade so 'next texture' never fades an image into itself.
    */
   private slotUrl: [string | null, string | null] = [null, null];
   private tex: TextureManager;
@@ -55,7 +56,8 @@ export class CrossfadeController {
    * @param renderer - Renderer to upload textures to.
    * @param texLabel - Element whose text shows the current texture's name.
    * @param interval - Seconds to hold each texture before fading.
-   * @param onComplete - Called once each fade finishes (e.g. to re-randomise the warp).
+   * @param onComplete - Called once each fade finishes, for example to
+   *   re-randomise the warp.
    */
   constructor(
     tex: TextureManager,
@@ -79,7 +81,7 @@ export class CrossfadeController {
   tick(dt: number): void {
     this.timer += dt;
 
-    // Kick off the incoming image's load when the hold expires. The fade itself
+    // Start the incoming image's load when the hold expires. The fade itself
     // waits until the load lands, so a slow decode can never pop in mid-fade.
     if (this.timer >= this.interval && !this.loading && !this.nextReady)
       void this.loadNext();
@@ -133,10 +135,10 @@ export class CrossfadeController {
    * Registers one or more image URLs and shows the first immediately in slot 0.
    *
    * @remarks
-   * Used to seed the bundled default textures at startup; every URL also joins
+   * Used to seed the bundled default textures at startup. Every URL also joins
    * the pool so it participates in the ongoing crossfade rotation.
    *
-   * @param urls - Image URLs to register; the first is displayed.
+   * @param urls - Image URLs to register. The first one is displayed.
    */
   async showUrls(urls: string[]): Promise<void> {
     this.tex.addUrls(urls);

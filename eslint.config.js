@@ -14,7 +14,7 @@ export default tseslint.config(
   {
     languageOptions: {
       parserOptions: {
-        // The test project spans src, tests and the config files; the default
+        // The test project spans src, tests and the config files. The default
         // tsconfig covers src alone and would leave the rest unparsed.
         project: ["./tsconfig.test.json"],
         tsconfigRootDir: import.meta.dirname,
@@ -38,7 +38,7 @@ export default tseslint.config(
       "@typescript-eslint/no-unsafe-member-access": "off",
       "@typescript-eslint/no-unsafe-argument": "off",
       "@typescript-eslint/no-unsafe-return": "off",
-      // `expect(mock.method)` is the normal way to assert on a spy; the rule
+      // `expect(mock.method)` is the normal way to assert on a spy. The rule
       // reads it as an unbound method reference.
       "@typescript-eslint/unbound-method": "off",
       // Async test doubles stand in for async production code even when the

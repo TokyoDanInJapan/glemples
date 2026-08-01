@@ -64,7 +64,7 @@ function setup(mutate: (s: AppState) => void = () => {}) {
   bindUI(state, crossfade, els);
 }
 
-/** Dispatches a cancelable wheel event and reports whether it was prevented. */
+/** Dispatches a cancellable wheel event and reports whether it was prevented. */
 function wheel(deltaY: number, target: EventTarget = document.body): boolean {
   const e = new WheelEvent("wheel", {
     deltaY,

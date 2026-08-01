@@ -169,7 +169,7 @@ export function bindUI(
   els.pause.addEventListener("click", () => togglePause(state, els.pause));
   els.fullscreen.addEventListener("click", toggleFullscreen);
   els.toggle.addEventListener("click", () => {
-    // Hover reveals the panel on pointer devices; touch has no hover, so this
+    // Hover reveals the panel on pointer devices. Touch has no hover, so this
     // is the only way in there.
     const open = document.body.classList.toggle("ui-open");
     els.toggle.setAttribute("aria-expanded", String(open));
@@ -178,7 +178,7 @@ export function bindUI(
   document.addEventListener("keydown", (e: KeyboardEvent) => {
     switch (e.key) {
       case " ":
-        // A focused button handles Space itself; triggering here too would
+        // A focused button handles Space itself. Triggering here too would
         // fire both the button's action and a crossfade.
         if ((e.target as HTMLElement | null)?.tagName === "BUTTON") break;
         e.preventDefault();

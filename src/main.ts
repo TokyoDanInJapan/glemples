@@ -8,8 +8,8 @@
  *
  * @remarks
  * Resolves the DOM elements the app needs, hands them to {@link createApp}, and
- * starts the frame loop. All wiring lives in `app/app.ts`; this file exists to
- * bridge the page to it and to report a startup failure legibly.
+ * starts the frame loop. All wiring lives in `app/app.ts`. This file exists to
+ * bridge the page to that wiring and to report a startup failure legibly.
  *
  * @packageDocumentation
  */

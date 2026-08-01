@@ -11,7 +11,7 @@
 
 import {
   computeWarpGrid,
-  randomizeState,
+  randomiseState,
   type WarpGridSize,
   type WarpParams,
   type WarpState,
@@ -47,9 +47,9 @@ export class WarpAnimator {
 
   /**
    * @param size - Grid dimensions in cells.
-   * @param initial - Starting warp state; a fresh random one by default.
+   * @param initial - Starting warp state. A fresh random one by default.
    */
-  constructor(size: WarpGridSize, initial: WarpState = randomizeState()) {
+  constructor(size: WarpGridSize, initial: WarpState = randomiseState()) {
     this.size = size;
     this.state = initial;
     this.grid = new Float32Array(size.cols * size.rows * 2);
@@ -90,7 +90,7 @@ export class WarpAnimator {
   update(animTime: number, params: WarpParams, fade: number): void {
     // A crossfade is starting or running: pick the state to morph towards so
     // the field eases across the fade instead of snapping at the end.
-    if (fade > 0 && !this.next) this.next = randomizeState();
+    if (fade > 0 && !this.next) this.next = randomiseState();
 
     computeWarpGrid(
       animTime,
