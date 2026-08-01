@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
- * Packages `dist/` into `releases/glemples-<version>.zip`.
+ * Packages `dist/` into `releases/<version>.zip`.
  *
  * Run via `npm run release`, which builds first. Prefers the `zip` CLI and
  * falls back to PowerShell's Compress-Archive on Windows, so the task does not
@@ -23,7 +23,7 @@ const releases = join(root, "releases");
 const { version } = JSON.parse(
   readFileSync(join(root, "package.json"), "utf8"),
 );
-const archive = join(releases, `glemples-${version}.zip`);
+const archive = join(releases, `${version}.zip`);
 
 if (!existsSync(dist)) {
   console.error("No dist/ directory — run `npm run build` first.");

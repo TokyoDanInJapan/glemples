@@ -116,7 +116,7 @@ reused at any size and tested without loading `config.yaml`.
 self-contained zip:
 
 ```
-releases/glemples-<version>.zip
+releases/<version>.zip
 ```
 
 The version comes from `package.json`. The archive holds the built page at its
